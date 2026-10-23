@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { suggest, timeWindow, gymDay } from "./workouts.js";
+import { suggest, timeWindow, gymDay, TARGETS } from "./workouts.js";
 
 // 2026-10-19 is a Monday.
 const at = (day, hour, minute = 0) => new Date(2026, 9, 19 + day, hour, minute);
@@ -67,4 +67,33 @@ test("an unknown aim falls back to maintain", () => {
 test("late night at Planet Fitness mentions club hours", () => {
   assert.ok(suggest({ date: at(0, 23, 30), gym: "pf" }).notes.some((n) => /24 hours/.test(n)));
   assert.ok(!suggest({ date: at(0, 23, 30), gym: "af" }).notes.some((n) => /24 hours/.test(n)));
+});
+
+test("a body part replaces today's split, even on Sunday", () => {
+  for (const target of Object.keys(TARGETS)) {
+    const w = suggest({ date: at(0, 10), target });
+    assert.equal(w.target, target);
+    assert.equal(w.title, TARGETS[target].title);
+    assert.equal(w.exercises.length, 6);
+  }
+  const sunday = suggest({ date: at(6, 10), target: "chest" });
+  assert.equal(sunday.rest, false);
+  assert.equal(sunday.title, "Chest day");
+  assert.equal(suggest({ date: at(0, 10), target: "nope" }).title, "Push A");
+});
+
+test("body-part days still follow the time of day, aim and gym", () => {
+  assert.equal(suggest({ date: at(0, 12), target: "back" }).exercises.length, 4);
+  assert.equal(suggest({ date: at(0, 10), target: "chest", gym: "pf" }).exercises[0].name, "Smith machine bench press");
+  assert.match(suggest({ date: at(0, 10), target: "legs", aim: "cut" }).cardio, /15–20 min/);
+});
+
+test("arms and abs use the lighter rep range; holds keep their own", () => {
+  const biceps = suggest({ date: at(0, 10), target: "biceps", aim: "gain" });
+  assert.equal(biceps.exercises[0].sets, 4);
+  assert.equal(biceps.exercises[0].reps, "8–12");
+  const abs = suggest({ date: at(0, 10), target: "abs" });
+  assert.equal(abs.exercises[0].reps, "12–20");
+  assert.equal(abs.exercises[2].reps, "30–60 sec");
+  assert.equal(abs.exercises[2].rest, "45 sec");
 });

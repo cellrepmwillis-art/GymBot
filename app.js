@@ -1,8 +1,8 @@
 import { dayKey, previousDay } from "./day.js";
-import { AIMS, GYMS, DAY_NAMES, suggest, gymDay, timeWindow, splitFor } from "./workouts.js";
+import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, suggest, gymDay, timeWindow, splitFor } from "./workouts.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-23 · 9:00 PM";
+const VERSION = "2026-10-23 · 10:00 PM";
 const STORAGE_KEY = "gymbot";
 const KEEP_DAYS = 60;
 
@@ -12,9 +12,12 @@ const $ = (id) => document.getElementById(id);
 
 function load() {
   // locked: { "2026-10-23": { at, shuffle, done: [exercise numbers] } } for
-  // every day the Lock in button was pressed. `at` keeps the workout picked
-  // for the time it was locked in, even if the app is opened again later.
-  const defaults = { aim: "maintain", gym: "pf", locked: {} };
+  // every day the Lock in button was pressed, plus `focus`, a body part
+  // picked instead of the split. `at` keeps the workout picked for the time
+  // it was locked in, even if the app is opened again later.
+  // focus: { day, target }, the body part picked on the main screen. It only
+  // applies to that day; the next day starts back on the split.
+  const defaults = { aim: "maintain", gym: "pf", locked: {}, focus: null };
   try {
     const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (data) return { ...defaults, ...data };
@@ -35,6 +38,32 @@ try { isFirstRun = !localStorage.getItem(STORAGE_KEY); } catch {}
 const state = load();
 
 // ---- Today ----
+
+// The body part picked for today, or null for today's split.
+const todaysTarget = () => (state.focus?.day === dayKey() && TARGETS[state.focus.target] ? state.focus.target : null);
+
+function renderFocus(split) {
+  const target = todaysTarget();
+  const choices = [[null, split ? `${split.title} (today's split)` : "Rest (today's plan)"], ...Object.entries(TARGET_LABELS)];
+  $("focus").replaceChildren(...choices.map(([value, label]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.setAttribute("aria-pressed", String(value === target));
+    button.addEventListener("click", () => chooseTarget(value));
+    return button;
+  }));
+}
+
+// Picking a body part after locking in switches today's workout to it.
+function chooseTarget(target) {
+  const today = dayKey();
+  state.focus = target ? { day: today, target } : null;
+  const lock = state.locked[today];
+  if (lock && (lock.focus ?? null) !== target) Object.assign(lock, { focus: target, shuffle: 0, done: [] });
+  save();
+  render();
+}
 
 // This week's Monday to Sunday as day keys, for the week strip.
 function weekKeys(now = new Date()) {
@@ -57,7 +86,11 @@ function renderNow() {
   const clock = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   $("now-time").textContent = `${window.label} · ${clock} · gym is usually ${window.crowd}`;
   $("aim-chip").textContent = AIMS[state.aim]?.label ?? "Maintain";
-  $("now-split").textContent = split ? `Today: ${split.title} · ${split.focus}` : "Today: rest day. Lock in for a recovery plan.";
+  const target = todaysTarget();
+  $("now-split").textContent = target
+    ? `Today: ${TARGETS[target].title} · ${TARGETS[target].focus}`
+    : split ? `Today: ${split.title} · ${split.focus}` : "Today: rest day. Lock in for a recovery plan, or pick a body part to train.";
+  renderFocus(split);
 
   const today = dayKey(now);
   const week = $("week");
@@ -81,7 +114,7 @@ function renderPlan() {
   const lock = state.locked[dayKey()];
   $("plan").hidden = !lock;
   if (!lock) return;
-  const w = suggest({ date: new Date(lock.at), aim: state.aim, gym: state.gym, shuffle: lock.shuffle });
+  const w = suggest({ date: new Date(lock.at), aim: state.aim, gym: state.gym, shuffle: lock.shuffle, target: lock.focus });
 
   $("plan-title").textContent = w.rest ? w.title : `${w.title} · ${w.day} ${w.window.label.toLowerCase()}`;
   $("plan-focus").textContent = w.focus;
@@ -140,10 +173,13 @@ function render() {
 }
 
 $("lock-in").addEventListener("click", () => {
-  // Locking in again updates the time of day, keeping today's exercises.
+  // Locking in again updates the time of day, keeping today's exercises
+  // unless the focus changed.
   const today = dayKey();
   const previous = state.locked[today];
-  state.locked[today] = { at: Date.now(), shuffle: previous?.shuffle ?? 0, done: previous?.done ?? [] };
+  const focus = todaysTarget();
+  const same = previous && (previous.focus ?? null) === focus;
+  state.locked[today] = { at: Date.now(), shuffle: same ? previous.shuffle ?? 0 : 0, done: same ? previous.done ?? [] : [], focus };
   save();
   render();
   $("plan").scrollIntoView({ behavior: "smooth", block: "start" });

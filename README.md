@@ -8,6 +8,7 @@ A workout picker that runs on your phone. Tap **Lock in** and it suggests today'
   |-----|-----|-----|-----|-----|-----|-----|
   | Push A (chest) | Pull A (back width) | Legs A (squat) | Push B (shoulders) | Pull B (back thickness) | Legs B (hinge) | Rest |
 
+- **One body part instead:** the buttons under today's split switch the workout to Chest, Back, Shoulders, Biceps, Triceps, Legs or Abs. It works on any day, Sunday included, and still follows the time of day, your aim and your gym. Biceps, triceps and abs use the lighter rep range for every exercise (abs use 12–20 reps), and holds like planks are timed. The choice lasts for the day; tomorrow starts back on the split.
 - **Time of day:** decides how long the session is and how busy the gym likely is.
 
   | Time | Session |
@@ -54,8 +55,8 @@ python3 -m http.server 8000
 |------|---------|
 | `index.html`, `styles.css` | The single screen and settings dialog |
 | `app.js` | Lock in, the week strip, checking off exercises, local storage |
-| `workouts.js` | The split, exercise choices, time-of-day windows and aims |
+| `workouts.js` | The split, body-part workouts, exercise choices, time-of-day windows and aims |
 | `day.js` | The 3am day boundary |
 | `sw.js`, `manifest.webmanifest` | Offline caching and home-screen install |
 
-Tests for the schedule, time of day, aims and gym equipment: `node --test`
+Tests for the schedule, body-part workouts, time of day, aims and gym equipment: `node --test`

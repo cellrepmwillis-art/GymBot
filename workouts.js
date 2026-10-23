@@ -38,9 +38,10 @@ export const GYMS = {
 
 // Each slot lists choices in order of preference. "barbell" choices are only
 // used at Anytime Fitness style gyms. The next choice is shown as the swap
-// when the first is taken.
+// when the first is taken. `reps` replaces the aim's reps for holds and
+// bodyweight sets.
 const B = (name) => ({ name, barbell: true });
-const E = (name) => ({ name });
+const E = (name, reps) => (reps ? { name, reps } : { name });
 
 const SPLITS = {
   pushA: {
@@ -112,10 +113,107 @@ const SPLITS = {
       [E("Dumbbell Bulgarian split squat"), E("Dumbbell reverse lunge")],
       [E("Seated leg curl"), E("Lying leg curl")],
       [E("Hip thrust (Smith machine)"), E("Glute kickback machine"), E("Hip abduction machine")],
-      [E("Seated calf raise"), E("Plank (3 × 45 sec)")],
+      [E("Seated calf raise"), E("Plank", "30–60 sec")],
     ],
   },
 };
+
+// One body part instead of today's split, picked on the main screen. "small"
+// muscles use the lighter rep range for every exercise, the first included;
+// abs also use their own reps and rest.
+export const TARGETS = {
+  chest: {
+    title: "Chest day",
+    focus: "Flat, incline and fly work",
+    slots: [
+      [B("Barbell bench press"), E("Smith machine bench press"), E("Dumbbell bench press")],
+      [E("Incline dumbbell press"), E("Smith machine incline press"), E("Incline chest press machine")],
+      [E("Chest press machine"), E("Dumbbell bench press")],
+      [E("Pec deck"), E("Cable fly"), E("Dumbbell fly")],
+      [E("Low-to-high cable fly"), E("Incline dumbbell fly")],
+      [E("Push-up", "as many as you can"), E("Assisted dip machine")],
+    ],
+  },
+  back: {
+    title: "Back day",
+    focus: "Width, thickness and lower back",
+    slots: [
+      [E("Lat pulldown"), E("Assisted pull-up machine")],
+      [B("Barbell bent-over row"), E("Single-arm dumbbell row"), E("Plate-loaded row machine")],
+      [E("Seated cable row"), E("Seated row machine")],
+      [E("Chest-supported dumbbell row"), E("Lat pulldown (close grip)")],
+      [E("Straight-arm cable pulldown"), E("Dumbbell pullover")],
+      [E("Back extension"), E("Cable pull-through")],
+    ],
+  },
+  shoulders: {
+    title: "Shoulder day",
+    focus: "Front, side and rear delts, plus traps",
+    slots: [
+      [B("Standing barbell overhead press"), E("Smith machine shoulder press"), E("Seated dumbbell shoulder press")],
+      [E("Shoulder press machine"), E("Dumbbell Arnold press")],
+      [E("Dumbbell lateral raise"), E("Cable lateral raise"), E("Lateral raise machine")],
+      [E("Rear delt fly machine"), E("Bent-over dumbbell reverse fly")],
+      [E("Cable face pull"), E("Cable rear delt fly")],
+      [E("Dumbbell shrug"), E("Smith machine shrug")],
+    ],
+  },
+  biceps: {
+    title: "Biceps day",
+    focus: "Curls from every angle, plus forearms",
+    small: true,
+    slots: [
+      [B("Barbell curl"), E("Dumbbell curl"), E("Cable curl")],
+      [E("Preacher curl machine"), E("Dumbbell preacher curl")],
+      [E("Incline dumbbell curl"), E("Cable curl (behind the body)")],
+      [E("Hammer curl"), E("Cable rope hammer curl")],
+      [E("Biceps curl machine"), E("Concentration curl")],
+      [E("Dumbbell wrist curl"), E("Farmer's carry", "40–60 sec")],
+    ],
+  },
+  triceps: {
+    title: "Triceps day",
+    focus: "Pressing, pushdowns and overhead work",
+    small: true,
+    slots: [
+      [B("Close-grip barbell bench press"), E("Close-grip Smith machine bench press"), E("Close-grip dumbbell press")],
+      [E("Assisted dip machine"), E("Triceps dip machine")],
+      [E("Cable rope pushdown"), E("Straight-bar cable pushdown")],
+      [E("Overhead cable triceps extension"), E("Overhead dumbbell triceps extension")],
+      [E("Dumbbell skull crusher"), E("Triceps extension machine")],
+      [E("Single-arm cable kickback"), E("Dumbbell kickback")],
+    ],
+  },
+  legs: {
+    title: "Leg day",
+    focus: "Quads, hamstrings, glutes and calves",
+    slots: [
+      [B("Barbell back squat"), E("Smith machine squat"), E("Leg press")],
+      [B("Barbell Romanian deadlift"), E("Smith machine Romanian deadlift"), E("Dumbbell Romanian deadlift")],
+      [E("Leg press"), E("Hack squat machine"), E("Dumbbell Bulgarian split squat")],
+      [E("Lying leg curl"), E("Seated leg curl")],
+      [E("Leg extension"), E("Dumbbell walking lunge")],
+      [E("Standing calf raise (Smith machine)"), E("Seated calf raise")],
+    ],
+  },
+  abs: {
+    title: "Ab day",
+    focus: "Upper and lower abs, obliques and core",
+    small: true,
+    reps: "12–20",
+    rest: "45 sec",
+    slots: [
+      [E("Cable crunch"), E("Ab crunch machine")],
+      [E("Hanging knee raise"), E("Captain's chair knee raise")],
+      [E("Plank", "30–60 sec"), E("Dead bug")],
+      [E("Cable woodchop"), E("Dumbbell Russian twist")],
+      [E("Reverse crunch"), E("Decline bench sit-up")],
+      [E("Side plank", "30 sec each side"), E("Dumbbell side bend")],
+    ],
+  },
+};
+
+export const TARGET_LABELS = { chest: "Chest", back: "Back", shoulders: "Shoulders", biceps: "Biceps", triceps: "Triceps", legs: "Legs", abs: "Abs" };
 
 // Sunday is 0 in JavaScript. Monday to Saturday run the split twice.
 const WEEK = [null, "pushA", "pullA", "legsA", "pushB", "pullB", "legsB"];
@@ -184,19 +282,21 @@ function cardio(aim, split, window) {
 // sets of the first exercise.
 function warmup(window, first) {
   const minutes = window.key === "early" ? 8 : 5;
-  return `${minutes} min easy on the bike or treadmill, then 2 light sets of ${first}.`;
+  const name = first.startsWith("Smith") ? first : first[0].toLowerCase() + first.slice(1);
+  return `${minutes} min easy on the bike or treadmill, then 2 light sets of ${name}.`;
 }
 
 const pick = (options, i) => options[((i % options.length) + options.length) % options.length];
 
 // The workout for `date`. `shuffle` moves every exercise to its next choice,
-// for the "Different exercises" button. Sunday returns a rest day.
-export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0 } = {}) {
+// for the "Different exercises" button. `target` is a body part from TARGETS
+// instead of today's split. Sunday without a target returns a rest day.
+export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, target = null } = {}) {
   const plan = AIMS[aim] ? aim : "maintain";
   const scheme = AIMS[plan];
   const day = gymDay(date);
   const window = timeWindow(date);
-  const split = splitFor(day);
+  const split = TARGETS[target] ? { key: target, ...TARGETS[target] } : splitFor(day);
   const base = { day: DAY_NAMES[day], window, aim: plan };
 
   if (!split) {
@@ -219,8 +319,12 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
   const exercises = slots.map((options, i) => {
     const choice = pick(options, shuffle);
     const alternative = options.length > 1 ? pick(options, shuffle + 1).name : null;
-    const { sets, reps, rest } = i === 0 ? scheme.main : scheme.accessory;
-    return { name: choice.name, sets, reps, rest, alternative, main: i === 0 };
+    const main = i === 0;
+    let { sets, reps, rest } = main && !split.small ? scheme.main : scheme.accessory;
+    if (main) sets = scheme.main.sets;
+    reps = choice.reps ?? split.reps ?? reps;
+    rest = split.rest ?? rest;
+    return { name: choice.name, sets, reps, rest, alternative, main };
   });
 
   // Supersets pair accessories two at a time (not the main lift): do one set
@@ -233,7 +337,7 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
   }
 
   const [cardioMinutes, cardioText] = cardio(plan, split, window);
-  const minutes = 8 + exercises.reduce((total, e) => total + (e.main ? 12 : superset ? 5 : 7), 0) + cardioMinutes;
+  const minutes = 8 + exercises.reduce((total, e) => total + (e.main && !split.small ? 12 : superset ? 5 : 7), 0) + cardioMinutes;
 
   const notes = [window.note, scheme.tip];
   if (window.key === "late" && gym === "pf") notes.push("Many Planet Fitness clubs aren't open 24 hours anymore, so check your club's hours.");
@@ -242,6 +346,7 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
     ...base,
     rest: false,
     split: split.key,
+    target: TARGETS[target] ? target : null,
     title: split.title,
     focus: split.focus,
     minutes: Math.round(minutes / 5) * 5,

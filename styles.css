@@ -168,3 +168,7 @@ dialog {
 dialog h2 { margin-bottom: 12px; }
 dialog::backdrop { background: rgb(0 0 0 / 0.5); }
 .exercises li.step { display: block; cursor: default; }
+
+.focus { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.focus button { padding: 6px 12px; border-radius: 999px; font-size: 0.9rem; background: var(--bg); }
+.focus button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
