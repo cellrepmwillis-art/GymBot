@@ -8,6 +8,10 @@
 //                  for calories burned; see met.js)
 //   runs           a different week, with a run each day (marathon)
 //   mainSwap       a different first exercise on some split days
+//   equipment      kinds of equipment in order of preference (see
+//                  equipmentKind in workouts.js): each exercise starts with
+//                  the most preferred choice the gym has, and swaps follow
+//                  the same order
 //   notes(ctx)     tips shown with the workout
 //   restTips(plan) advice for the rest day (the rest day itself is always
 //                  just stretching; see suggest in workouts.js)
@@ -48,6 +52,8 @@ export const TRAINERS = {
   bodybuilder: {
     label: "Bodybuilder",
     blurb: "Muscle size first: every muscle twice a week, moderate reps, sets taken close to failure.",
+    // Cables and machines keep tension on the muscle through the whole rep.
+    equipment: ["cable", "machine", "dumbbell", "smith", "barbell", "other"],
     sources: ["ACSM progression models for resistance training", "Bodybuilding.com", "Schoenfeld's hypertrophy research"],
     scheme: (plan) => ({
       main: { reps: plan === "cut" ? "6–8" : "6–10" },
@@ -63,6 +69,8 @@ export const TRAINERS = {
   powerlifter: {
     label: "Powerlifter",
     blurb: "Strength on the squat, bench and deadlift: heavy low-rep sets with long rests.",
+    // The barbell lifts, or the Smith machine where there are no barbells.
+    equipment: ["barbell", "smith", "dumbbell", "machine", "cable", "other"],
     sources: ["ACSM progression models for resistance training", "NSCA strength training guidelines"],
     scheme: (plan) => ({
       main: { sets: plan === "gain" ? 5 : 4, reps: "3–5", rest: "3–5 min" },
@@ -85,6 +93,8 @@ export const TRAINERS = {
   marathon: {
     label: "Marathon runner",
     blurb: "Running comes first: easy runs, one speed day, one tempo day and a long run, with lifting twice a week to stay injury-free.",
+    // Free weights and bodyweight train balance and each leg on its own.
+    equipment: ["dumbbell", "other", "cable", "machine", "smith", "barbell"],
     sources: ["ACSM", "Runner's World", "the 80/20 easy-to-hard running guideline"],
     scheme: () => ({
       main: { sets: 3, reps: "6–8", rest: "2 min" },
@@ -121,6 +131,8 @@ export const TRAINERS = {
   weightLoss: {
     label: "Weight loss",
     blurb: "More cardio and circuit-style lifting with short rests, following the HHS and ACSM weight-loss guidelines.",
+    // Machines and cables are quick to set up between circuit exercises.
+    equipment: ["machine", "cable", "dumbbell", "smith", "other", "barbell"],
     sources: ["HHS Physical Activity Guidelines for Americans", "American Heart Association", "ACSM position stand on weight loss", "LiveStrong"],
     scheme: () => ({
       main: { sets: 3, reps: "8–12", rest: "90 sec" },
@@ -145,6 +157,8 @@ export const TRAINERS = {
   glp1: {
     label: "GLP-1 medication (Mounjaro, Zepbound, Ozempic, Wegovy)",
     blurb: "Lifting comes first to keep muscle while the medication takes weight off, at a pace that respects lower appetite and side effects.",
+    // Machines guide the movement, which is safer on a lightheaded day.
+    equipment: ["machine", "smith", "cable", "dumbbell", "other", "barbell"],
     sources: [
       "2025 joint advisory on GLP-1 nutrition and lifestyle (ACLM, ASN, Obesity Medicine Association, The Obesity Society)",
       "HHS Physical Activity Guidelines for Americans",

@@ -2,7 +2,7 @@ import { dayKey, previousDay } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned } from "./workouts.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 7:00 AM";
+const VERSION = "2026-10-24 · 8:00 AM";
 const STORAGE_KEY = "gymbot";
 const KEEP_DAYS = 60;
 // Weight used for calories burned until one is entered.

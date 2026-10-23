@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { suggest, timeWindow, gymDay, TARGETS, caloriesBurned, equipmentRank } from "./workouts.js";
+import { suggest, timeWindow, gymDay, TARGETS, caloriesBurned, equipmentRank, equipmentKind } from "./workouts.js";
 
 // 2026-10-19 is a Monday.
 const at = (day, hour, minute = 0) => new Date(2026, 9, 19 + day, hour, minute);
@@ -233,4 +233,34 @@ test("equipment ranks", () => {
   assert.equal(equipmentRank("Barbell back squat"), 1);
   assert.equal(equipmentRank("Cable fly"), 2);
   assert.equal(equipmentRank("Push-up"), 2);
+});
+
+test("each trainer starts with its favorite equipment", () => {
+  const first = (trainer, gym, day = 0, i = 0) => suggest({ date: at(day, 10), trainer, gym }).exercises[i];
+  // Push A's first exercise: barbell, Smith machine or dumbbell bench press.
+  assert.equal(first("none", "af").name, "Barbell bench press");
+  assert.equal(first("powerlifter", "af").name, "Barbell bench press");
+  assert.equal(first("powerlifter", "pf").name, "Smith machine bench press");
+  assert.equal(first("glp1", "af").name, "Smith machine bench press");
+  // Push A's fly: cable fly, pec deck or dumbbell fly.
+  assert.equal(first("bodybuilder", "pf", 0, 3).name, "Cable fly");
+  assert.equal(first("bodybuilder", "pf", 0, 3).alternative, "Pec deck");
+  assert.equal(first("weightLoss", "pf", 0, 3).name, "Pec deck");
+  // Swaps follow the trainer's order: bodybuilder fly goes cable, machine, dumbbell.
+  const fly = (n) => suggest({ date: at(0, 10), trainer: "bodybuilder", swaps: { 3: n } }).exercises[3].name;
+  assert.deepEqual([0, 1, 2, 3].map(fly), ["Cable fly", "Pec deck", "Dumbbell fly", "Cable fly"]);
+});
+
+test("equipment kinds", () => {
+  assert.equal(equipmentKind("Straight-arm cable pulldown"), "cable");
+  assert.equal(equipmentKind("Lat pulldown"), "machine");
+  assert.equal(equipmentKind("Hammer curl"), "dumbbell");
+  assert.equal(equipmentKind("Seated calf raise"), "machine");
+  assert.equal(equipmentKind("Standing calf raise (Smith machine)"), "smith");
+  assert.equal(equipmentKind("Push-up"), "other");
+});
+
+test("marathon lifting starts with free weights", () => {
+  // Monday's upper body after the easy run: Push A's chest press goes dumbbell.
+  assert.equal(suggest({ date: at(0, 7), trainer: "marathon", gym: "af" }).exercises[0].name, "Dumbbell bench press");
 });
