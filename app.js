@@ -2,7 +2,7 @@ import { dayKey, previousDay } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned } from "./workouts.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 3:00 AM";
+const VERSION = "2026-10-24 · 4:00 AM";
 const STORAGE_KEY = "gymbot";
 const KEEP_DAYS = 60;
 // Weight used for calories burned until one is entered.
@@ -156,7 +156,7 @@ function renderOptions() {
   const target = todaysTarget();
   const today = workout(now, target);
   $("now-split").textContent = today.rest
-    ? "Today: rest day. Lock in for a recovery plan, or pick a body part to train."
+    ? "Today: rest day · stretching only"
     : `Today: ${displayName(today)}`;
 
   const focusChoices = [[null, "Default"], ...Object.entries(TARGET_LABELS)];
@@ -287,9 +287,9 @@ function renderWorkout() {
 
   $("plan-title").textContent = w.rest ? w.title : displayName(w);
   $("plan-focus").textContent = w.rest ? w.focus : [`${w.day} ${w.window.label.toLowerCase()}`, displayDetail(w)].filter(Boolean).join(" · ");
-  $("plan-minutes").textContent = w.rest ? "Rest" : `~${w.minutes} min`;
+  $("plan-minutes").textContent = `~${w.minutes} min`;
 
-  const notes = w.rest ? [] : w.notes;
+  const notes = w.notes;
   $("tips").hidden = !notes.length && !w.sources.length;
   $("tips-summary").textContent = `Tips for this session (${notes.length})`;
   $("plan-notes").replaceChildren(...notes.map((text) => Object.assign(document.createElement("li"), { textContent: text })));

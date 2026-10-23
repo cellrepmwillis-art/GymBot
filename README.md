@@ -4,7 +4,7 @@ A workout picker that runs on your phone. It opens on an options screen: today's
 
 On the workout screen every part of the session (warm-up, run, each exercise, cardio) has an open padlock. Tap it when you finish that part and it locks. Locked parts add up to **calories burned**, shown at the top along with how many parts you've locked. Equipment is what a typical American gym has (Planet Fitness, Anytime Fitness and the like).
 
-- **The week:** push, pull, legs, twice, Monday to Saturday. Sunday is a rest day with a short recovery plan. You can pick a different rest day in Settings; the six workouts then run in order on the days after it (with Wednesday off, Thursday is Push A and Tuesday Legs B), and the marathon week moves the same way.
+- **The week:** push, pull, legs, twice, Monday to Saturday. Sunday is a rest day: about 11 minutes of gentle stretching and nothing else, so the day stays a recovery day. To train anyway, you have to pick a body part under Focus. You can pick a different rest day in Settings; the six workouts then run in order on the days after it (with Wednesday off, Thursday is Push A and Tuesday Legs B), and the marathon week moves the same way.
 - **Rest-day reminder:** opening the app on your rest day shows a quote about rest with **Exit** and **Lock in anyway**. Exit leaves you be (it closes the app where the phone allows it). Lock in anyway goes to the options screen so you can pick a body part and train; the reminder doesn't come back that day.
 
   | Mon | Tue | Wed | Thu | Fri | Sat | Sun |

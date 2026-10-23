@@ -238,7 +238,6 @@ select { font: inherit; width: 100%; padding: 10px 8px; border-radius: 10px; bor
 .item .detail { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
 .item.warmup .name, .item.cardio .name, .item.run .name { text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.8rem; color: var(--muted); }
 .item.warmup .detail, .item.cardio .detail, .item.run .detail { color: var(--text); font-size: 0.95rem; }
-.item.step .name { font-weight: 500; }
 .item.locked .item-body { opacity: 0.6; }
 .item.locked .name { text-decoration: line-through; }
 .hint { margin: 10px 0 0; }

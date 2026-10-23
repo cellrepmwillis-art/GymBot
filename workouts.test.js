@@ -1,7 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { suggest, timeWindow, gymDay, TARGETS, caloriesBurned } from "./workouts.js";
-import { restStepEffort } from "./met.js";
 
 // 2026-10-19 is a Monday.
 const at = (day, hour, minute = 0) => new Date(2026, 9, 19 + day, hour, minute);
@@ -165,7 +164,7 @@ test("every workout is a checklist of items with minutes and effort", () => {
       assert.equal(new Set(w.items.map((i) => i.id)).size, w.items.length);
       for (const item of w.items) {
         assert.ok(item.minutes >= 0 && item.met >= 0, `${trainer} ${d} ${item.id}`);
-        if (item.kind !== "step") assert.ok(item.minutes > 0 && item.met > 0, `${trainer} ${d} ${item.id}`);
+        assert.ok(item.minutes > 0 && item.met > 0, `${trainer} ${d} ${item.id}`);
       }
     }
   }
@@ -187,21 +186,17 @@ test("calories burned count only locked items", () => {
   assert.equal(caloriesBurned(items, ["a", "b"], 180), 286 + 339);
 });
 
-test("rest-day walks and stretching count; advice doesn't", () => {
-  assert.deepEqual(restStepEffort("Walk 20–40 min at an easy pace."), { minutes: 30, met: 3.5 });
-  assert.deepEqual(restStepEffort("10 min of stretching: hips"), { minutes: 10, met: 2.3 });
-  assert.deepEqual(restStepEffort("Get to bed on time."), { minutes: 0, met: 0 });
-  const sunday = suggest({ date: at(6, 10), aim: "cut" });
-  assert.equal(sunday.items[0].minutes, 52.5);
-});
-
-test("the rest day can be any weekday; the split follows it", () => {
-  // Wednesday off: Thursday is Push A, Tuesday Legs B.
-  const titles = [0, 1, 2, 3, 4, 5, 6].map((d) => suggest({ date: at(d, 10), restDay: 3 }).title);
-  assert.deepEqual(titles, ["Pull B", "Legs B", "Rest day", "Push A", "Pull A", "Legs A", "Push B"]);
-  assert.equal(suggest({ date: at(2, 10), restDay: 3 }).focus, "Recover for Thursday");
-  assert.equal(suggest({ date: at(6, 10), restDay: "3" }).title, "Push B");
-  // The marathon week moves too: the long run is the day before the rest day.
-  assert.equal(suggest({ date: at(1, 7), trainer: "marathon", restDay: 3 }).title, "Long run");
-  assert.equal(suggest({ date: at(6, 10), restDay: 0 }).focus, "Recover for Monday");
+test("the rest day is stretching only", () => {
+  for (const trainer of ["none", "marathon", "weightLoss", "glp1", "powerlifter", "bodybuilder"]) {
+    for (const aim of ["gain", "maintain", "cut"]) {
+      const w = suggest({ date: at(6, 10), trainer, aim });
+      assert.equal(w.rest, true);
+      assert.ok(w.items.every((i) => i.kind === "stretch" && i.met === 2.3));
+      // Nothing that reads as exercise beyond stretching.
+      for (const text of [w.focus, ...w.notes, ...w.items.map((i) => `${i.name} ${i.text}`)]) {
+        assert.doesNotMatch(text, /\b(walk|walking|run|steps|cardio|lift|train)\b/i, `${trainer}: ${text}`);
+      }
+    }
+  }
+  assert.equal(suggest({ date: at(6, 10) }).minutes, 11);
 });

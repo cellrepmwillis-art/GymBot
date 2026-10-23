@@ -6,7 +6,7 @@
 // since most Planet Fitness clubs don't have them.
 import { RESET_HOUR } from "./day.js";
 import { TRAINERS, RUNNER_LEGS } from "./trainers.js";
-import { MET, restStepEffort } from "./met.js";
+import { MET } from "./met.js";
 
 export { TRAINERS };
 export { MET, caloriesBurned } from "./met.js";
@@ -305,6 +305,17 @@ function schemeFor(coach, plan) {
   return { main: { ...base.main, ...changes.main }, accessory: { ...base.accessory, ...changes.accessory }, tip: base.tip };
 }
 
+// The rest day's gentle stretching routine: [name, how, minutes].
+const REST_STRETCHES = [
+  ["Cat-cow", "Slow, on hands and knees, 10 breaths", 1],
+  ["Kneeling hip flexor stretch", "1 min each side, squeeze the glute of the back leg", 2],
+  ["Seated hamstring stretch", "1 min each side, back long, reach for the foot", 2],
+  ["Figure-4 glute stretch", "On your back, 1 min each side", 2],
+  ["Calf stretch against a wall", "1 min each side, back heel down", 2],
+  ["Doorway chest stretch", "Forearms on the frame, lean through gently, 1 min", 1],
+  ["Child's pose with a side reach", "Reach the hands to each side to stretch the lats, 1 min", 1],
+];
+
 // Splits the trainers can ask for by name, besides the week's own.
 const splitByKey = (key) => (key === "runnerLegs" ? RUNNER_LEGS : SPLITS[key] ?? TARGETS[key]);
 
@@ -333,21 +344,24 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
   const sources = coach.sources;
   const base = { day: DAY_NAMES[day], window, aim: plan, trainer: coachKey, sources };
 
+  // The rest day is stretching only: nothing that reads as a workout. A body
+  // part picked under Focus is the only way to train on it.
   if (!split && !runDay) {
-    const steps = coach.restSteps?.(plan) ?? [
-      plan === "cut" ? "Walk 45–60 min, or get 10,000 steps." : "Walk 20–40 min at an easy pace.",
-      "10 min of stretching: hips, hamstrings, chest and shoulders.",
-      plan === "gain" ? "Eat at your calorie goal anyway; muscle is built on rest days." : "Get to bed on time; sleep is when you recover.",
-    ];
+    const items = REST_STRETCHES.map(([name, text, minutes], i) => ({ id: `stretch${i}`, kind: "stretch", name, text, minutes, met: MET.stretching }));
     return {
       ...base,
       rest: true,
       title: "Rest day",
-      focus: `Recover for ${DAY_NAMES[(day + 1) % 7]}`,
-      steps,
-      items: steps.map((text, i) => ({ id: `step${i}`, kind: "step", name: text, ...restStepEffort(text) })),
+      focus: `Stretching only. Recover for ${DAY_NAMES[(day + 1) % 7]}.`,
+      minutes: items.reduce((total, item) => total + item.minutes, 0),
+      items,
+      notes: [
+        "Rest days are part of the plan: muscles repair and grow between workouts, not during them.",
+        ...(coach.restTips?.(plan) ?? [plan === "gain" ? "Eat at your calorie goal anyway; muscle is built on rest days." : "Get to bed on time; sleep is when you recover."]),
+      ],
     };
   }
+
 
   const budget = Math.min(window.budget, coach.maxLifts ?? 6, shotSoon ? 4 : 6);
   const allowed = (option) => gym === "af" || !option.barbell;

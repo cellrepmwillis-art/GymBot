@@ -9,7 +9,8 @@
 //   runs           a different week, with a run each day (marathon)
 //   mainSwap       a different first exercise on some split days
 //   notes(ctx)     tips shown with the workout
-//   restSteps(plan) the rest day's plan
+//   restTips(plan) advice for the rest day (the rest day itself is always
+//                  just stretching; see suggest in workouts.js)
 // ctx is { plan, split, window, gym, shotSoon }.
 
 import { MET } from "./met.js";
@@ -111,10 +112,9 @@ export const TRAINERS = {
       ...(ctx.split ? ["Run first, then lift, so the run gets your fresh legs."] : []),
       "Strength training twice a week improves running economy and helps prevent injury.",
     ],
-    restSteps: () => [
-      "Full rest, or a 20–30 min walk.",
-      "10 min of stretching or foam rolling: calves, hips and hamstrings.",
-      "Eat enough carbs to refuel after Saturday's long run.",
+    restTips: () => [
+      "Eat enough carbs today to refuel from yesterday.",
+      "Foam rolling your calves, hips and hamstrings after the stretches helps the legs recover.",
     ],
   },
 
@@ -136,10 +136,9 @@ export const TRAINERS = {
       "Food does most of the work. Keep your calorie goal in CookBot.",
       ...(ctx.plan === "gain" ? ["Your aim is set to Gain. For weight loss, set Aim to Cut in Settings."] : []),
     ],
-    restSteps: () => [
-      "Walk 45–60 min, or get 10,000 steps.",
-      "10 min of stretching: hips, hamstrings, chest and shoulders.",
+    restTips: () => [
       "Get 7–9 hours of sleep; short sleep makes hunger harder to manage.",
+      "Food still does most of the work today. Keep your calorie goal in CookBot.",
     ],
   },
 
@@ -169,9 +168,7 @@ export const TRAINERS = {
       "If you feel dizzy, shaky or faint, stop and eat something. The risk of low blood sugar is higher if you also take insulin or a sulfonylurea.",
       "Not medical advice. Check with your prescriber before starting a new program, especially after a dose increase.",
     ],
-    restSteps: () => [
-      "Walk 20–30 min at an easy pace.",
-      "10 min of stretching: hips, hamstrings, chest and shoulders.",
+    restTips: () => [
       "Keep up protein and water even on days you aren't hungry.",
     ],
   },
