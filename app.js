@@ -135,13 +135,12 @@ function renderOptions() {
   $("aim-chip").textContent = coach ? `${aim} · ${coach}` : aim;
 
   const target = todaysTarget();
-  const planned = workout(now, null);
   const today = workout(now, target);
   $("now-split").textContent = today.rest
     ? "Today: rest day. Lock in for a recovery plan, or pick a body part to train."
     : `Today: ${today.title} · ${today.focus}`;
 
-  const focusChoices = [[null, planned.rest ? "Rest (today's plan)" : `${planned.title} (today's plan)`], ...Object.entries(TARGET_LABELS)];
+  const focusChoices = [[null, "Default"], ...Object.entries(TARGET_LABELS)];
   segmented($("focus"), focusChoices, target, (value) => {
     state.focus = value ? { day: dayKey(), target: value } : null;
     save();

@@ -10,7 +10,7 @@ On the workout screen every part of the session (warm-up, run, each exercise, ca
   |-----|-----|-----|-----|-----|-----|-----|
   | Push A (chest) | Pull A (back width) | Legs A (squat) | Push B (shoulders) | Pull B (back thickness) | Legs B (hinge) | Rest |
 
-- **One body part instead:** the Focus buttons on the options screen switch the workout to Chest, Back, Shoulders, Biceps, Triceps, Legs or Abs. It works on any day, Sunday included, and still follows the time of day, your aim and your gym. Biceps, triceps and abs use the lighter rep range for every exercise (abs use 12–20 reps), and holds like planks are timed. The choice lasts for the day; tomorrow starts back on the split.
+- **One body part instead:** the Focus buttons on the options screen (Default is the normal plan) switch the workout to Chest, Back, Shoulders, Biceps, Triceps, Legs or Abs. It works on any day, Sunday included, and still follows the time of day, your aim and your gym. Biceps, triceps and abs use the lighter rep range for every exercise (abs use 12–20 reps), and holds like planks are timed. The choice lasts for the day; tomorrow starts back on the split.
 - **Time of day:** decides how long the session is and how busy the gym likely is.
 
   | Time | Session |
