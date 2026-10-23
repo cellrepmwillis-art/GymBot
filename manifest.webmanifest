@@ -2,6 +2,7 @@
   "name": "GymBot Workout Picker",
   "short_name": "GymBot",
   "description": "Tap Lock in for a workout that fits the day, the time and your aim.",
+  "id": "gymbot-app",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
