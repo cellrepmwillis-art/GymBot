@@ -259,3 +259,4 @@ main[hidden], .dock[hidden] { display: none; }
 .backup legend { font-size: 0.9rem; color: var(--muted); padding: 0 4px; }
 .backup-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
 #backup-status:empty { display: none; }
+.swap { color: var(--accent); font-weight: 600; font-size: inherit; text-align: left; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }

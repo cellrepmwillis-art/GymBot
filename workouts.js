@@ -319,12 +319,27 @@ const REST_STRETCHES = [
 // Splits the trainers can ask for by name, besides the week's own.
 const splitByKey = (key) => (key === "runnerLegs" ? RUNNER_LEGS : SPLITS[key] ?? TARGETS[key]);
 
+// What kind of equipment an exercise uses, for ordering swaps: machines
+// (Smith machines included) first, then dumbbells and barbells, then the rest
+// (cables, bodyweight, benches).
+export function equipmentRank(name) {
+  if (/machine|leg press|pec deck|pulldown|hack squat|leg curl|leg extension|calf press|smith/i.test(name)) return 0;
+  if (/dumbbell|barbell|goblet|farmer/i.test(name)) return 1;
+  return 2;
+}
+
+// The most choices an exercise cycles through when swapped.
+const MAX_CHOICES = 3;
+
 // The workout for `date`. `shuffle` moves every exercise to its next choice,
-// for the "Different exercises" button. `target` is a body part from TARGETS
+// for the "Different exercises" button. `swaps` swaps single exercises, as
+// { position: times swapped }: each swap moves to the next of up to three
+// choices, the planned one first and then the others ordered machine, free
+// weight, other. `target` is a body part from TARGETS
 // instead of today's split. `trainer` is a key of TRAINERS, and `shotDay` the
 // weekday (Sunday is 0) of a weekly GLP-1 shot. `restDay` is the weekday off;
 // on it, without a target, this returns a rest day.
-export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, target = null, trainer = "none", shotDay = null, restDay = 0 } = {}) {
+export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, swaps = {}, target = null, trainer = "none", shotDay = null, restDay = 0 } = {}) {
   const plan = AIMS[aim] ? aim : "maintain";
   const coachKey = TRAINERS[trainer] ? trainer : "none";
   const coach = TRAINERS[coachKey];
@@ -370,8 +385,12 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
     : coach.superset === "always" ? window.crowd !== "packed" || window.key === "lunch"
     : window.key === "lunch" || (plan === "cut" && window.crowd !== "packed");
   const exercises = slots.map((options, i) => {
-    const choice = pick(options, shuffle);
-    const alternative = options.length > 1 ? pick(options, shuffle + 1).name : null;
+    const planned = pick(options, shuffle);
+    const others = options.filter((option) => option !== planned).sort((a, b) => equipmentRank(a.name) - equipmentRank(b.name));
+    const choices = [planned, ...others].slice(0, MAX_CHOICES);
+    const swapped = swaps[i] ?? 0;
+    const choice = choices[swapped % choices.length];
+    const alternative = choices.length > 1 ? choices[(swapped + 1) % choices.length].name : null;
     const main = i === 0;
     let { sets, reps, rest } = main && !split.small ? scheme.main : scheme.accessory;
     if (main) sets = scheme.main.sets;

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { suggest, timeWindow, gymDay, TARGETS, caloriesBurned } from "./workouts.js";
+import { suggest, timeWindow, gymDay, TARGETS, caloriesBurned, equipmentRank } from "./workouts.js";
 
 // 2026-10-19 is a Monday.
 const at = (day, hour, minute = 0) => new Date(2026, 9, 19 + day, hour, minute);
@@ -199,4 +199,38 @@ test("the rest day is stretching only", () => {
     }
   }
   assert.equal(suggest({ date: at(6, 10) }).minutes, 11);
+});
+
+test("swapping an exercise cycles through up to three choices: planned, then machine, free weight, other", () => {
+  const names = (swaps) => suggest({ date: at(0, 10), gym: "af", swaps }).exercises[0];
+  // Push A's first exercise at an Anytime Fitness style gym.
+  assert.equal(names({}).name, "Barbell bench press");
+  assert.equal(names({}).alternative, "Smith machine bench press");
+  assert.equal(names({ 0: 1 }).name, "Smith machine bench press");
+  assert.equal(names({ 0: 1 }).alternative, "Dumbbell bench press");
+  assert.equal(names({ 0: 2 }).name, "Dumbbell bench press");
+  assert.equal(names({ 0: 2 }).alternative, "Barbell bench press");
+  assert.equal(names({ 0: 3 }).name, "Barbell bench press");
+  // Other exercises stay put.
+  assert.equal(suggest({ date: at(0, 10), gym: "af", swaps: { 0: 1 } }).exercises[1].name, "Incline dumbbell press");
+  // Two choices just alternate.
+  const curl = (swaps) => suggest({ date: at(1, 10), swaps }).exercises[5].name;
+  assert.equal(curl({}), "Hammer curl");
+  assert.equal(curl({ 5: 1 }), "Cable rope hammer curl");
+  assert.equal(curl({ 5: 2 }), "Hammer curl");
+  // Machines come before free weights, free weights before the rest.
+  const fly = suggest({ date: at(0, 10), swaps: {} }).exercises[3];
+  assert.equal(fly.name, "Cable fly");
+  assert.equal(fly.alternative, "Pec deck");
+  assert.equal(suggest({ date: at(0, 10), swaps: { 3: 1 } }).exercises[3].alternative, "Dumbbell fly");
+});
+
+test("equipment ranks", () => {
+  assert.equal(equipmentRank("Smith machine squat"), 0);
+  assert.equal(equipmentRank("Lat pulldown"), 0);
+  assert.equal(equipmentRank("Leg press"), 0);
+  assert.equal(equipmentRank("Dumbbell curl"), 1);
+  assert.equal(equipmentRank("Barbell back squat"), 1);
+  assert.equal(equipmentRank("Cable fly"), 2);
+  assert.equal(equipmentRank("Push-up"), 2);
 });

@@ -2,7 +2,7 @@ import { dayKey, previousDay } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned } from "./workouts.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 6:00 AM";
+const VERSION = "2026-10-24 · 7:00 AM";
 const STORAGE_KEY = "gymbot";
 const KEEP_DAYS = 60;
 // Weight used for calories burned until one is entered.
@@ -13,12 +13,13 @@ const $ = (id) => document.getElementById(id);
 // ---- Storage (everything lives in this browser's localStorage) ----
 
 function load() {
-  // locked: { "2026-10-23": { at, shuffle, focus, done, active, burned } } for
+  // locked: { "2026-10-23": { at, shuffle, swaps, focus, done, active, burned } } for
   // every day the Lock in button was pressed. `at` keeps the workout picked
   // for the time it was locked in, even if the app is opened again later.
   // `focus` is a body part picked instead of the split, `done` the ids of
   // the items locked so far, `active` whether the workout screen is open
   // (until Lock out) and `burned` the calories from the locked items.
+  // `swaps` counts taps on each exercise's "Taken?" swap, by position.
   // focus: { day, target }, the body part picked on the options screen. It
   // only applies to that day; the next day starts back on the split.
   // trainer: a key of TRAINERS (the "AI Trainer" setting); shotDay: the
@@ -77,13 +78,13 @@ function weight() {
 const todaysTarget = () => (state.focus?.day === dayKey() && TARGETS[state.focus.target] ? state.focus.target : null);
 
 // The workout for `date` with the current settings.
-const workout = (date, target, shuffle = 0) =>
-  suggest({ date, aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay, restDay: state.restDay, target, shuffle });
+const workout = (date, target, shuffle = 0, swaps = {}) =>
+  suggest({ date, aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay, restDay: state.restDay, target, shuffle, swaps });
 
 // Today's locked-in workout, or null.
 function lockedWorkout() {
   const lock = state.locked[dayKey()];
-  return lock ? { lock, w: workout(new Date(lock.at), lock.focus, lock.shuffle) } : null;
+  return lock ? { lock, w: workout(new Date(lock.at), lock.focus, lock.shuffle, lock.swaps) } : null;
 }
 
 // Short trainer names for the chip on the options screen.
@@ -252,6 +253,7 @@ $("lock-in").addEventListener("click", () => {
     at: Date.now(),
     focus,
     shuffle: same ? previous.shuffle ?? 0 : 0,
+    swaps: same ? previous.swaps ?? {} : {},
     done: same ? previous.done ?? [] : [],
     active: true,
     burned: 0,
@@ -363,7 +365,25 @@ function renderWorkout() {
       // Supersets number each pair: 2A, 2B, 3A, 3B...
       const pair = w.superset && !item.main && item.superset ? `Superset ${Math.floor((lifts - 2) / 2) + 2}${item.superset}` : null;
       const rest = item.superset === "A" ? "no rest, go straight to B" : `rest ${item.rest}`;
-      detail.textContent = [item.main ? "Main lift" : pair, rest, item.alternative ? `Taken? ${item.alternative}` : null].filter(Boolean).join(" · ");
+      detail.textContent = [item.main ? "Main lift" : pair, rest].filter(Boolean).join(" · ");
+      if (item.alternative) {
+        // Tapping the alternative swaps it in; the next tap moves on to the
+        // exercise's third choice, if it has one.
+        const swap = document.createElement("button");
+        swap.type = "button";
+        swap.className = "link-btn swap";
+        swap.textContent = `${item.alternative} ⇄`;
+        swap.setAttribute("aria-label", `Swap to ${item.alternative}`);
+        swap.addEventListener("click", (event) => {
+          event.stopPropagation();
+          const position = Number(item.id.slice(2));
+          lock.swaps = { ...lock.swaps, [position]: (lock.swaps?.[position] ?? 0) + 1 };
+          // The new exercise hasn't been done yet.
+          lock.done = lock.done.filter((id) => id !== item.id);
+          renderWorkout();
+        });
+        detail.append(" · Taken? ", swap);
+      }
       detail.append(" ", exampleLink(item.name));
     } else {
       detail.textContent = item.text ?? "";
@@ -386,6 +406,7 @@ $("shuffle").addEventListener("click", () => {
   const today = lockedWorkout();
   if (!today) return;
   today.lock.shuffle = (today.lock.shuffle ?? 0) + 1;
+  today.lock.swaps = {};
   // New exercises start unlocked; the warm-up, run and cardio stay as they were.
   today.lock.done = today.lock.done.filter((id) => !id.startsWith("ex"));
   renderWorkout();
