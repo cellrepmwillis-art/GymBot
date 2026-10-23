@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { suggest, timeWindow, gymDay, TARGETS } from "./workouts.js";
+import { suggest, timeWindow, gymDay, TARGETS, caloriesBurned } from "./workouts.js";
+import { restStepEffort } from "./met.js";
 
 // 2026-10-19 is a Monday.
 const at = (day, hour, minute = 0) => new Date(2026, 9, 19 + day, hour, minute);
@@ -154,4 +155,42 @@ test("GLP-1: lifting first, no supersets, lighter around the shot", () => {
   }
   assert.equal(suggest({ date: at(2, 10), trainer: "glp1", shotDay: 4 }).exercises.length, 5);
   assert.equal(suggest({ date: at(3, 10), trainer: "glp1", shotDay: "" }).exercises.length, 5);
+});
+
+test("every workout is a checklist of items with minutes and effort", () => {
+  for (const trainer of ["none", "marathon", "glp1", "powerlifter", "weightLoss", "bodybuilder"]) {
+    for (let d = 0; d < 7; d++) {
+      const w = suggest({ date: at(d, 10), trainer });
+      assert.ok(w.items.length > 0);
+      assert.equal(new Set(w.items.map((i) => i.id)).size, w.items.length);
+      for (const item of w.items) {
+        assert.ok(item.minutes >= 0 && item.met >= 0, `${trainer} ${d} ${item.id}`);
+        if (item.kind !== "step") assert.ok(item.minutes > 0 && item.met > 0, `${trainer} ${d} ${item.id}`);
+      }
+    }
+  }
+  const pushA = suggest({ date: at(0, 10), aim: "cut" });
+  assert.deepEqual(pushA.items.map((i) => i.id), ["warmup", "ex0", "ex1", "ex2", "ex3", "ex4", "ex5", "cardio"]);
+  const tempo = suggest({ date: at(3, 7), trainer: "marathon" });
+  assert.deepEqual(tempo.items.slice(0, 2).map((i) => i.id), ["warmup", "run"]);
+  assert.equal(tempo.items[1].name, "Tempo run");
+});
+
+test("calories burned count only locked items", () => {
+  const items = [
+    { id: "a", minutes: 60, met: 3.5 },
+    { id: "b", minutes: 30, met: 8.3 },
+  ];
+  // 3.5 MET × 81.6 kg × 1 h = 286
+  assert.equal(caloriesBurned(items, ["a"], 180), 286);
+  assert.equal(caloriesBurned(items, [], 180), 0);
+  assert.equal(caloriesBurned(items, ["a", "b"], 180), 286 + 339);
+});
+
+test("rest-day walks and stretching count; advice doesn't", () => {
+  assert.deepEqual(restStepEffort("Walk 20–40 min at an easy pace."), { minutes: 30, met: 3.5 });
+  assert.deepEqual(restStepEffort("10 min of stretching: hips"), { minutes: 10, met: 2.3 });
+  assert.deepEqual(restStepEffort("Get to bed on time."), { minutes: 0, met: 0 });
+  const sunday = suggest({ date: at(6, 10), aim: "cut" });
+  assert.equal(sunday.items[0].minutes, 52.5);
 });

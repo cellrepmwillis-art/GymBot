@@ -1,6 +1,8 @@
 # GymBot
 
-A workout picker that runs on your phone. Tap **Lock in** and it suggests today's workout from the day of the week, the time of day and your aim, using equipment a typical American gym has (Planet Fitness, Anytime Fitness and the like).
+A workout picker that runs on your phone. It opens on an options screen: today's day and time, a focus, your aim, the AI Trainer, your gym and this week's progress. Tap **Lock in** and it switches to a screen with only today's workout and **Ask the trainer**. Tap **Lock out** at the bottom to go back to the options. Locking back in later the same day keeps your progress.
+
+On the workout screen every part of the session (warm-up, run, each exercise, cardio) has an open padlock. Tap it when you finish that part and it locks. Locked parts add up to **calories burned**, shown at the top along with how many parts you've locked. Equipment is what a typical American gym has (Planet Fitness, Anytime Fitness and the like).
 
 - **The week:** push, pull, legs, twice, Monday to Saturday. Sunday is a rest day with a short recovery plan.
 
@@ -8,7 +10,7 @@ A workout picker that runs on your phone. Tap **Lock in** and it suggests today'
   |-----|-----|-----|-----|-----|-----|-----|
   | Push A (chest) | Pull A (back width) | Legs A (squat) | Push B (shoulders) | Pull B (back thickness) | Legs B (hinge) | Rest |
 
-- **One body part instead:** the buttons under today's split switch the workout to Chest, Back, Shoulders, Biceps, Triceps, Legs or Abs. It works on any day, Sunday included, and still follows the time of day, your aim and your gym. Biceps, triceps and abs use the lighter rep range for every exercise (abs use 12–20 reps), and holds like planks are timed. The choice lasts for the day; tomorrow starts back on the split.
+- **One body part instead:** the Focus buttons on the options screen switch the workout to Chest, Back, Shoulders, Biceps, Triceps, Legs or Abs. It works on any day, Sunday included, and still follows the time of day, your aim and your gym. Biceps, triceps and abs use the lighter rep range for every exercise (abs use 12–20 reps), and holds like planks are timed. The choice lasts for the day; tomorrow starts back on the split.
 - **Time of day:** decides how long the session is and how busy the gym likely is.
 
   | Time | Session |
@@ -23,7 +25,7 @@ A workout picker that runs on your phone. Tap **Lock in** and it suggests today'
 
   A workout after midnight counts toward the day before, until 3am, the same as CookBot.
 
-- **Aims (Settings ⚙︎):** Gain, Maintain or Cut, the same three as CookBot.
+- **Aims:** Gain, Maintain or Cut, the same three as CookBot.
 
   | Aim | Main lift | Other lifts | Cardio |
   |-----|-----------|-------------|--------|
@@ -31,7 +33,7 @@ A workout picker that runs on your phone. Tap **Lock in** and it suggests today'
   | Maintain | 3 × 8–10, rest 2 min | 3 × 10–12, rest 75 sec | 10–20 min steady |
   | Cut | 3 × 6–8, rest 2 min (heavy, to keep muscle) | 3 × 12–15, rest 45–60 sec, as supersets when the gym isn't packed | 15–30 min incline treadmill walk |
 
-- **AI Trainer (Settings ⚙︎):** "Train like a" changes the plan to match published guidance for that kind of athlete or situation. For now it uses built-in rules, not a live AI, and each workout lists the sources it follows.
+- **AI Trainer:** "Train like a" changes the plan to match published guidance for that kind of athlete or situation. For now it uses built-in rules, not a live AI, and each workout lists the sources it follows.
 
   | Trainer | What changes | Based on |
   |---------|--------------|----------|
@@ -43,17 +45,17 @@ A workout picker that runs on your phone. Tap **Lock in** and it suggests today'
   | GLP-1 medication (Mounjaro, Zepbound, Ozempic, Wegovy) | Lifting comes first to keep muscle, 5 exercises with full rests and no supersets, easy cardio, tips on eating before training, water and dizziness. With a weekly shot day set, that day and the next are lighter (4 exercises and a walk) | 2025 joint advisory on GLP-1 nutrition (ACLM, ASN, OMA, The Obesity Society), HHS, AHA, the drugs' prescribing information |
 
   None of this is medical advice. On a GLP-1 medication, check with your prescriber before starting a new program.
-- **Gym (Settings ⚙︎):** "Planet Fitness style" uses Smith machines, dumbbells, cables and machines only. "Anytime Fitness style" also uses barbells and squat racks for the main lifts.
+- **Gym:** "Planet Fitness style" uses Smith machines, dumbbells, cables and machines only. "Anytime Fitness style" also uses barbells and squat racks for the main lifts.
 - **Different exercises:** swaps every exercise for its next option. The same exercises come back each week by default, so you can add weight or reps week to week.
-- **Check off exercises:** tap one when you finish it. The week strip marks every day you locked in.
-- **Ask the trainer:** type a quick question, like "should I lean forward or back on incline curls?", and get a short gut-check answer without leaving the app. Tap 💬 at the top to jump there, or **Ask about form** under any exercise. Today's workout, aim, trainer and gym go with the question so the answer fits your plan, and you can ask follow-ups. For anything bigger, it suggests a YouTube search for a form video. The chat starts over each day, or after 10 questions.
+- **Calories burned:** each part of the workout has an effort level (MET) from the Compendium of Physical Activities, for example 3.5 for lifting, 4.3 for circuits, 5.3 for an incline treadmill walk and 8.3 for an easy run. Calories = MET × your weight in kg × hours, counted only for the parts you've locked. Your weight comes from Settings, or from CookBot's profile if CookBot runs on the same site; until then it uses 170 lb. These are estimates, and real burn varies from person to person. The week strip on the options screen shows each day's calories and the week's total.
+- **Ask the trainer:** type a quick question, like "should I lean forward or back on incline curls?", and get a short gut-check answer without leaving the app. It's on the workout screen; tap 💬 at the top to jump there, or **Ask about form** under any exercise. Today's workout, aim, trainer and gym go with the question so the answer fits your plan, and you can ask follow-ups. For anything bigger, it suggests a YouTube search for a form video. The chat starts over each day, or after 10 questions.
 - **No accounts.** Your settings, locked-in days and today's questions are stored only in your browser's local storage. Locked-in days are kept for 60 days.
 
 ## Ask the trainer (optional)
 
 Answers come from Claude Sonnet 5.5, a balance of speed, quality and cost. The app sends your question and today's workout straight from your phone to the Anthropic API using your own API key. There's no GymBot server.
 
-To use it, get an API key from [console.anthropic.com](https://console.anthropic.com), add some credit, and enter the key in Settings (⚙︎). If CookBot runs on the same site and already has a key, Settings offers to reuse it. A question costs roughly a penny, so 100 questions a month is under a dollar. Without a key, the rest of the app works as normal and offline; asking needs a connection.
+To use it, get an API key from [console.anthropic.com](https://console.anthropic.com), add some credit, and enter the key in Settings (⚙︎), which also holds your weight. If CookBot runs on the same site and already has a key, Settings offers to reuse it. A question costs roughly a penny, so 100 questions a month is under a dollar. Without a key, the rest of the app works as normal and offline; asking needs a connection.
 
 ## Running it
 
@@ -72,13 +74,14 @@ python3 -m http.server 8000
 
 | File | Purpose |
 |------|---------|
-| `index.html`, `styles.css` | The single screen and settings dialog |
-| `app.js` | Lock in, the week strip, checking off exercises, local storage |
+| `index.html`, `styles.css` | The options and workout screens, and the settings dialog |
+| `app.js` | The two screens, Lock in and Lock out, the padlocks, local storage |
 | `workouts.js` | The split, body-part workouts, exercise choices, time-of-day windows and aims |
 | `trainers.js` | The AI Trainer profiles: bodybuilder, powerlifter, marathon, weight loss and GLP-1 |
 | `ask.js` | Ask the trainer (Claude API call) |
+| `met.js` | Calories burned: effort levels and the formula |
 | `day.js` | The 3am day boundary |
 | `sw.js`, `manifest.webmanifest` | Offline caching and home-screen install |
 | `vendor/anthropic-sdk-0.131.0.js` | The Anthropic TypeScript SDK (MIT License), bundled into one file, the same as CookBot's |
 
-Tests for the schedule, body-part workouts, trainers, time of day, aims and gym equipment: `node --test`
+Tests for the schedule, body-part workouts, trainers, calories burned, time of day, aims and gym equipment: `node --test`

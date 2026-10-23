@@ -6,8 +6,10 @@
 // since most Planet Fitness clubs don't have them.
 import { RESET_HOUR } from "./day.js";
 import { TRAINERS, RUNNER_LEGS } from "./trainers.js";
+import { MET, restStepEffort } from "./met.js";
 
 export { TRAINERS };
+export { MET, caloriesBurned } from "./met.js";
 
 // Aims match CookBot's Settings: "gain", "maintain" or "cut".
 export const AIMS = {
@@ -263,22 +265,22 @@ export function splitFor(day) {
   return key ? { key, ...SPLITS[key] } : null;
 }
 
-// Cardio after lifting, by aim, as [minutes, what to do]. Leg days get less
+// Cardio after lifting, by aim, as [minutes, what to do, MET]. Leg days get less
 // so the legs can recover; late at night it stays easy.
 function cardio(aim, split, window) {
   const legs = split.key.startsWith("legs");
   const easy = window.key === "late" || window.key === "evening";
   const short = window.budget < 6;
-  if (aim === "gain") return [5, "Optional: 5–10 min easy bike or elliptical to cool down."];
+  if (aim === "gain") return [5, "Optional: 5–10 min easy bike or elliptical to cool down.", MET.easyMachine];
   if (aim === "maintain") {
     const minutes = short || legs ? 10 : 20;
-    return [minutes, `${minutes} min at a steady pace on the elliptical, bike or rower.`];
+    return [minutes, `${minutes} min at a steady pace on the elliptical, bike or rower.`, MET.moderateMachine];
   }
   // Cut
-  if (short) return [15, "15 min incline treadmill walk (10–12% incline, about 3 mph)."];
-  if (legs) return [20, "15–20 min incline treadmill walk (10–12% incline, about 3 mph)."];
-  if (easy) return [30, "30 min incline treadmill walk (10–12% incline, about 3 mph)."];
-  return [30, "25–30 min incline treadmill walk or 15 min on the StairMaster."];
+  if (short) return [15, "15 min incline treadmill walk (10–12% incline, about 3 mph).", MET.inclineWalk];
+  if (legs) return [20, "15–20 min incline treadmill walk (10–12% incline, about 3 mph).", MET.inclineWalk];
+  if (easy) return [30, "30 min incline treadmill walk (10–12% incline, about 3 mph).", MET.inclineWalk];
+  return [30, "25–30 min incline treadmill walk or 15 min on the StairMaster.", MET.inclineWalk];
 }
 
 // Warm-up: 5 minutes of easy cardio, longer in the early morning, then light
@@ -326,16 +328,18 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
   const base = { day: DAY_NAMES[day], window, aim: plan, trainer: coachKey, sources };
 
   if (!split && !runDay) {
+    const steps = coach.restSteps?.(plan) ?? [
+      plan === "cut" ? "Walk 45–60 min, or get 10,000 steps." : "Walk 20–40 min at an easy pace.",
+      "10 min of stretching: hips, hamstrings, chest and shoulders.",
+      plan === "gain" ? "Eat at your calorie goal anyway; muscle is built on rest days." : "Get to bed on time; sleep is when you recover.",
+    ];
     return {
       ...base,
       rest: true,
       title: "Rest day",
       focus: "Recover for Monday",
-      steps: coach.restSteps?.(plan) ?? [
-        plan === "cut" ? "Walk 45–60 min, or get 10,000 steps." : "Walk 20–40 min at an easy pace.",
-        "10 min of stretching: hips, hamstrings, chest and shoulders.",
-        plan === "gain" ? "Eat at your calorie goal anyway; muscle is built on rest days." : "Get to bed on time; sleep is when you recover.",
-      ],
+      steps,
+      items: steps.map((text, i) => ({ id: `step${i}`, kind: "step", name: text, ...restStepEffort(text) })),
     };
   }
 
@@ -366,10 +370,27 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
   }
 
   // A run day's run replaces the cardio after lifting.
-  const [runMinutes, runText] = runDay ? runDay.run(ctx) : [0, null];
-  const [cardioMinutes, cardioText] = runDay ? [0, null] : coach.cardio?.(ctx) ?? cardio(plan, split, window);
-  const liftMinutes = exercises.reduce((total, e) => total + (e.main && !split.small ? 12 : superset ? 5 : 7), 0);
+  const [runMinutes, runText, runMet] = runDay ? runDay.run(ctx) : [0, null, 0];
+  const [cardioMinutes, cardioText, cardioMet] = runDay ? [0, null, 0] : coach.cardio?.(ctx) ?? cardio(plan, split, window);
+  for (const e of exercises) {
+    e.minutes = e.main && !split.small ? 12 : superset ? 5 : 7;
+    e.met = superset ? MET.circuit : MET.lifting;
+  }
+  const liftMinutes = exercises.reduce((total, e) => total + e.minutes, 0);
   const minutes = (exercises.length ? 8 : 0) + liftMinutes + cardioMinutes + runMinutes;
+  const warmupText = runDay
+    ? `5 min brisk walk, then leg swings and a few 20-second strides.${exercises.length ? " After the run, 1 light set of each lift is enough." : ""}`
+    : warmup(window, exercises[0].name);
+  const warmupMinutes = runDay || window.key !== "early" ? 5 : 8;
+
+  // Everything to lock in, in order, each with its minutes and MET for the
+  // calories burned.
+  const items = [
+    { id: "warmup", kind: "warmup", name: "Warm-up", text: warmupText, minutes: warmupMinutes, met: MET.warmup },
+    ...(runText ? [{ id: "run", kind: "run", name: runDay.title.split(" + ")[0], text: runText, minutes: runMinutes, met: runMet }] : []),
+    ...exercises.map((e, i) => ({ id: `ex${i}`, kind: "lift", ...e })),
+    ...(cardioText ? [{ id: "cardio", kind: "cardio", name: "Cardio", text: cardioText, minutes: cardioMinutes, met: cardioMet }] : []),
+  ];
 
   // The time-of-day note is about lifting, so a run-only day skips it.
   const notes = [...(split ? [window.note] : []), ...(coach.notes?.(ctx) ?? [scheme.tip])];
@@ -384,9 +405,8 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
     focus: runDay ? (split ? `Run, then ${split.focus.toLowerCase()}` : "Running only today") : split.focus,
     minutes: Math.round(minutes / 5) * 5,
     run: runText,
-    warmup: runDay
-      ? `5 min brisk walk, then leg swings and a few 20-second strides.${exercises.length ? " After the run, 1 light set of each lift is enough." : ""}`
-      : warmup(window, exercises[0].name),
+    warmup: warmupText,
+    items,
     exercises,
     superset,
     cardio: cardioText,

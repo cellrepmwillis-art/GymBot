@@ -4,12 +4,15 @@
 //   scheme(plan)   sets, reps and rest for the main lift and the rest
 //   maxLifts       how many exercises at most
 //   superset       "always" (when the gym isn't packed) or "never"
-//   cardio(ctx)    [minutes, what to do] after lifting
+//   cardio(ctx)    [minutes, what to do, MET] after lifting (MET: how hard,
+//                  for calories burned; see met.js)
 //   runs           a different week, with a run each day (marathon)
 //   mainSwap       a different first exercise on some split days
 //   notes(ctx)     tips shown with the workout
 //   restSteps(plan) Sunday's plan
 // ctx is { plan, split, window, gym, shotSoon }.
+
+import { MET } from "./met.js";
 
 const B = (name) => ({ name, barbell: true });
 const E = (name, reps) => (reps ? { name, reps } : { name });
@@ -31,7 +34,7 @@ export const RUNNER_LEGS = {
 
 const easyRun = (ctx, extra = 0) => {
   const minutes = (ctx.window.budget < 6 ? 25 : 35) + extra;
-  return [minutes, `Easy run, ${minutes} min, at a pace you could talk at (1% incline on a treadmill).`];
+  return [minutes, `Easy run, ${minutes} min, at a pace you could talk at (1% incline on a treadmill).`, MET.easyRun];
 };
 
 export const TRAINERS = {
@@ -69,8 +72,8 @@ export const TRAINERS = {
     // Pull A starts with the deadlift, so the week has all three lifts.
     mainSwap: { pullA: [B("Barbell deadlift"), E("Smith machine deadlift"), E("Dumbbell Romanian deadlift")] },
     cardio: (ctx) => (ctx.plan === "cut"
-      ? [15, "15 min incline treadmill walk. Keep it easy so it doesn't cut into your lifting."]
-      : [10, "10 min easy walk or bike. Light cardio still helps your heart and recovery."]),
+      ? [15, "15 min incline treadmill walk. Keep it easy so it doesn't cut into your lifting.", MET.inclineWalk]
+      : [10, "10 min easy walk or bike. Light cardio still helps your heart and recovery.", MET.easyWalk]),
     notes: (ctx) => [
       "Warm up the main lift in steps: empty bar, then about 50%, 70% and 85% of your working weight.",
       "Stop each heavy set with 1–2 good reps left. Form breaking down means the set is over.",
@@ -91,17 +94,17 @@ export const TRAINERS = {
     // Day of the week (Sunday is 0) to a run plus, on some days, lifting.
     runs: {
       1: { title: "Easy run + upper body", split: "pushA", run: (ctx) => easyRun(ctx, ctx.plan === "cut" ? 10 : 0) },
-      2: { title: "Speed work", run: (ctx) => [45, ctx.window.budget < 6
-        ? "Intervals, 30 min: 8 min easy, then 5 × (2 min hard, 2 min easy), then 2 min easy."
-        : "Intervals, 45 min: 10 min easy, then 6 × (3 min hard, 2 min easy), then 5 min easy."] },
+      2: { title: "Speed work", run: (ctx) => (ctx.window.budget < 6
+        ? [30, "Intervals, 30 min: 8 min easy, then 5 × (2 min hard, 2 min easy), then 2 min easy.", MET.intervals]
+        : [45, "Intervals, 45 min: 10 min easy, then 6 × (3 min hard, 2 min easy), then 5 min easy.", MET.intervals]) },
       3: { title: "Easy run + runner's legs", split: "runnerLegs", run: (ctx) => easyRun(ctx) },
-      4: { title: "Tempo run + upper body", split: "pullA", run: (ctx) => [40, ctx.window.budget < 6
-        ? "Tempo run, 30 min: 8 min easy, 15 min comfortably hard, 7 min easy."
-        : "Tempo run, 40 min: 10 min easy, 20 min comfortably hard (a few words at a time), 10 min easy."] },
-      5: { title: "Cross-train + core", split: "abs", run: () => [30, "30 min on the bike or elliptical, easy. It builds fitness without the pounding."] },
-      6: { title: "Long run", run: (ctx) => [90, `Long run, 60–150 min at an easy pace. Add no more than about 10% a week.${ctx.window.key === "late" || ctx.window.key === "evening" ? " Most runners do this one in the morning." : ""}`] },
+      4: { title: "Tempo run + upper body", split: "pullA", run: (ctx) => (ctx.window.budget < 6
+        ? [30, "Tempo run, 30 min: 8 min easy, 15 min comfortably hard, 7 min easy.", MET.tempo]
+        : [40, "Tempo run, 40 min: 10 min easy, 20 min comfortably hard (a few words at a time), 10 min easy.", MET.tempo]) },
+      5: { title: "Cross-train + core", split: "abs", run: () => [30, "30 min on the bike or elliptical, easy. It builds fitness without the pounding.", MET.easyMachine] },
+      6: { title: "Long run", run: (ctx) => [90, `Long run, 60–150 min at an easy pace. Add no more than about 10% a week.${ctx.window.key === "late" || ctx.window.key === "evening" ? " Most runners do this one in the morning." : ""}`, MET.easyRun] },
     },
-    cardio: () => [25, "Easy run, 20–30 min, at a pace you could talk at."],
+    cardio: () => [25, "Easy run, 20–30 min, at a pace you could talk at.", MET.easyRun],
     notes: (ctx) => [
       "About 80% of your running should be easy. Save the hard effort for speed and tempo days.",
       ...(ctx.split ? ["Run first, then lift, so the run gets your fresh legs."] : []),
@@ -124,8 +127,8 @@ export const TRAINERS = {
     }),
     superset: "always",
     cardio: (ctx) => (ctx.window.budget < 6
-      ? [20, "20 min brisk incline walk or elliptical."]
-      : [40, "35–45 min of moderate cardio: incline walk, elliptical or bike, hard enough that talking takes effort."]),
+      ? [20, "20 min brisk incline walk or elliptical.", MET.moderateMachine]
+      : [40, "35–45 min of moderate cardio: incline walk, elliptical or bike, hard enough that talking takes effort.", MET.moderateMachine]),
     notes: (ctx) => [
       "Guidelines call for 150–300 min of moderate cardio a week plus strength training twice. To lose weight, ACSM suggests working up to 200–300 min a week; this plan gets you there.",
       "Aim for 8,000–10,000 steps a day outside the gym too.",
@@ -155,8 +158,8 @@ export const TRAINERS = {
     maxLifts: 5,
     superset: "never",
     cardio: (ctx) => (ctx.shotSoon
-      ? [15, "Easy 15–20 min walk. Skip it if you feel sick."]
-      : [20, "20 min brisk walk or bike at a pace you can still talk at."]),
+      ? [15, "Easy 15–20 min walk. Skip it if you feel sick.", MET.easyWalk]
+      : [20, "20 min brisk walk or bike at a pace you can still talk at.", MET.briskWalk]),
     notes: (ctx) => [
       ...(ctx.shotSoon ? ["Shot day or the day after: nausea and low energy are most common now, so this is a lighter session. If you feel unwell, just walk."] : []),
       "Lifting is the priority. In the big trials, about a quarter to over a third of the weight lost on these drugs was lean mass; strength training helps keep it.",

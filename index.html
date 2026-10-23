@@ -14,12 +14,13 @@
   <header class="top">
     <h1>GymBot</h1>
     <div class="top-actions">
-      <button id="open-ask" class="icon-btn" aria-label="Ask the trainer">💬</button>
+      <button id="open-ask" class="icon-btn" aria-label="Ask the trainer" hidden>💬</button>
       <button id="open-settings" class="icon-btn" aria-label="Settings">⚙︎</button>
     </div>
   </header>
 
-  <main>
+  <!-- Options: what you see when the app opens. -->
+  <main id="options-screen">
     <section class="card now">
       <div class="now-head">
         <div>
@@ -29,12 +30,60 @@
         <span id="aim-chip" class="chip"></span>
       </div>
       <p id="now-split" class="now-split"></p>
-      <div id="focus" class="focus" role="group" aria-label="Workout focus"></div>
-      <ol id="week" class="week" aria-label="This week"></ol>
-      <button id="lock-in" class="primary lock" type="button">Lock in</button>
     </section>
 
-    <section id="plan" class="card" hidden aria-live="polite">
+    <section class="card">
+      <h2>Focus</h2>
+      <div id="focus" class="focus" role="group" aria-label="Workout focus"></div>
+    </section>
+
+    <section class="card">
+      <h2>Aim</h2>
+      <div id="aim-choices" class="segmented" role="group" aria-label="Aim"></div>
+      <p id="aim-blurb" class="muted small blurb"></p>
+
+      <h2 class="spaced">AI Trainer</h2>
+      <label class="field">
+        <span class="visually-hidden">Train like a</span>
+        <select id="trainer-input"></select>
+      </label>
+      <p id="trainer-blurb" class="muted small blurb"></p>
+      <label class="field" id="shot-field">
+        <span>Weekly shot day (lighter workouts that day and the next)</span>
+        <select id="shot-input">
+          <option value="">Not set</option>
+          <option value="1">Monday</option>
+          <option value="2">Tuesday</option>
+          <option value="3">Wednesday</option>
+          <option value="4">Thursday</option>
+          <option value="5">Friday</option>
+          <option value="6">Saturday</option>
+          <option value="0">Sunday</option>
+        </select>
+      </label>
+
+      <h2 class="spaced">Gym</h2>
+      <div id="gym-choices" class="segmented" role="group" aria-label="Gym"></div>
+      <p id="gym-blurb" class="muted small blurb"></p>
+    </section>
+
+    <section class="card">
+      <h2>This week</h2>
+      <ol id="week" class="week" aria-label="This week"></ol>
+      <p id="week-total" class="muted small"></p>
+    </section>
+
+    <div class="dock">
+      <button id="lock-in" class="primary lock" type="button">
+        <span class="lock-icon" aria-hidden="true"></span>
+        <span id="lock-in-label">Lock in</span>
+      </button>
+    </div>
+  </main>
+
+  <!-- The workout: what you see after Lock in, until Lock out. -->
+  <main id="workout-screen" hidden>
+    <section class="card">
       <div class="plan-head">
         <div>
           <h2 id="plan-title"></h2>
@@ -42,20 +91,27 @@
         </div>
         <span id="plan-minutes" class="chip"></span>
       </div>
-      <ul id="plan-notes" class="notes small"></ul>
-      <h3 id="warmup-title">Warm-up</h3>
-      <p id="plan-warmup"></p>
-      <h3 id="run-title">Run</h3>
-      <p id="plan-run"></p>
-      <h3 id="lifts-title">Lifts</h3>
-      <ol id="plan-exercises" class="exercises"></ol>
-      <p id="plan-tip" class="muted small" hidden>Tap an exercise when you finish it.</p>
-      <h3 id="cardio-title">Cardio</h3>
-      <p id="plan-cardio"></p>
-      <div class="row">
+      <div class="progress">
+        <div class="progress-stats">
+          <span id="locked-count"></span>
+          <strong id="burned" class="burned"></strong>
+        </div>
+        <div class="bar"><div id="bar-fill" class="bar-fill"></div></div>
+        <p id="burned-note" class="muted small"></p>
+      </div>
+      <details id="tips" class="tips">
+        <summary id="tips-summary">Tips for this session</summary>
+        <ul id="plan-notes" class="notes small"></ul>
+        <p id="plan-sources" class="muted small sources"></p>
+      </details>
+    </section>
+
+    <section class="card">
+      <ol id="items" class="items"></ol>
+      <p class="muted small hint">Tap a lock when you finish that part. Locked items count toward calories burned.</p>
+      <div class="row" id="shuffle-row">
         <button id="shuffle" type="button">Different exercises</button>
       </div>
-      <p id="plan-sources" class="muted small sources"></p>
     </section>
 
     <section class="card" id="ask-card">
@@ -74,48 +130,21 @@
         <button id="ask-clear" class="link-btn small" type="button" hidden>New chat</button>
       </div>
     </section>
+
+    <button id="lock-out" class="lock lock-out" type="button">
+      <span class="lock-icon open" aria-hidden="true"></span>
+      <span>Lock out</span>
+    </button>
   </main>
 
   <dialog id="settings">
     <form method="dialog" id="settings-form">
       <h2>Settings</h2>
-      <fieldset class="profile">
-        <legend>Your plan (picks sets, reps and cardio)</legend>
-        <label class="field">
-          <span>Aim</span>
-          <select id="aim-input"></select>
-        </label>
-        <p class="muted small" id="aim-blurb"></p>
-        <label class="field">
-          <span>Gym</span>
-          <select id="gym-input"></select>
-        </label>
-      </fieldset>
-      <fieldset class="profile">
-        <legend>AI Trainer</legend>
-        <label class="field">
-          <span>Train like a</span>
-          <select id="trainer-input"></select>
-        </label>
-        <p class="muted small" id="trainer-blurb"></p>
-        <label class="field" id="shot-field">
-          <span>Weekly shot day (lighter workouts that day and the next)</span>
-          <select id="shot-input">
-            <option value="">Not set</option>
-            <option value="1">Monday</option>
-            <option value="2">Tuesday</option>
-            <option value="3">Wednesday</option>
-            <option value="4">Thursday</option>
-            <option value="5">Friday</option>
-            <option value="6">Saturday</option>
-            <option value="0">Sunday</option>
-          </select>
-        </label>
-        <p class="muted small">
-          For now the trainer follows built-in rules based on published guidance (sources are listed under each workout),
-          not a live AI. It isn't medical advice.
-        </p>
-      </fieldset>
+      <label class="field">
+        <span>Your weight (lb), for calories burned</span>
+        <input id="weight-input" type="number" min="50" max="700" step="any" inputmode="decimal">
+      </label>
+      <p class="muted small" id="weight-note"></p>
       <label class="field">
         <span>Anthropic API key (optional, only for Ask the trainer)</span>
         <input id="key-input" type="password" autocomplete="off" placeholder="sk-ant-...">
@@ -129,9 +158,14 @@
         from console.anthropic.com. A question costs about a penny. Everything else in GymBot is free and works offline.
       </p>
       <p class="muted small">
+        Calories burned are estimates from the Compendium of Physical Activities: the effort of each part of the workout,
+        its minutes and your weight. Real burn varies from person to person.
+      </p>
+      <p class="muted small">
         The week is push, pull, legs, twice, Monday to Saturday, with Sunday off. The time of day decides how long the
         session is and how busy the gym is likely to be. A workout after midnight counts toward the day before, until 3am.
-        Your settings and the days you locked in are stored only in this browser.
+        The AI Trainer follows built-in rules based on published guidance, not a live AI, and isn't medical advice.
+        Your settings and workouts are stored only in this browser.
       </p>
       <p class="muted small" id="version"></p>
       <div class="row">
