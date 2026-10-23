@@ -136,9 +136,12 @@ function renderOptions() {
 
   const target = todaysTarget();
   const today = workout(now, target);
-  $("now-split").textContent = today.rest
-    ? "Today: rest day. Lock in for a recovery plan, or pick a body part to train."
-    : `Today: ${today.title} · ${today.focus}`;
+  // The split's "Pull A" names stay out of sight: "Today: Back and biceps",
+  // or "Today: Back (selected)" for a body part picked under Focus.
+  const split = /^(Push|Pull|Legs) [AB]$/.test(today.title) ? today.focus.replace(/ \(.*\)$/, "") : today.title;
+  $("now-split").textContent = target ? `Today: ${TARGET_LABELS[target]} (selected)`
+    : today.rest ? "Today: rest day. Lock in for a recovery plan, or pick a body part to train."
+    : `Today: ${split}`;
 
   const focusChoices = [[null, "Default"], ...Object.entries(TARGET_LABELS)];
   segmented($("focus"), focusChoices, target, (value) => {
