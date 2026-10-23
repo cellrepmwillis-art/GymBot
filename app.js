@@ -87,6 +87,21 @@ function lockedWorkout() {
 // Short trainer names for the chip on the options screen.
 const TRAINER_CHIPS = { bodybuilder: "Bodybuilder", powerlifter: "Powerlifter", marathon: "Marathon", weightLoss: "Weight loss", glp1: "GLP-1" };
 
+// The split's "Pull A" style names stay out of sight. A split day shows what
+// it trains ("Back and biceps") with its emphasis ("Back width first") as the
+// detail; a body part picked under Focus shows as "Back (selected)".
+const isSplitDay = (w) => /^(Push|Pull|Legs) [AB]$/.test(w.title);
+
+function displayName(w) {
+  if (w.target) return `${TARGET_LABELS[w.target]} (selected)`;
+  return isSplitDay(w) ? w.focus.replace(/ \(.*\)$/, "") : w.title;
+}
+
+function displayDetail(w) {
+  const emphasis = isSplitDay(w) ? w.focus.match(/\((.*)\)$/)?.[1] : w.focus;
+  return emphasis ? emphasis[0].toUpperCase() + emphasis.slice(1) : "";
+}
+
 // A padlock, open or shut.
 function lockIcon(locked) {
   const shackle = locked ? "M8 11V7a4 4 0 0 1 8 0v4" : "M8 11V7a4 4 0 0 1 7.6-1.8";
@@ -136,12 +151,9 @@ function renderOptions() {
 
   const target = todaysTarget();
   const today = workout(now, target);
-  // The split's "Pull A" names stay out of sight: "Today: Back and biceps",
-  // or "Today: Back (selected)" for a body part picked under Focus.
-  const split = /^(Push|Pull|Legs) [AB]$/.test(today.title) ? today.focus.replace(/ \(.*\)$/, "") : today.title;
-  $("now-split").textContent = target ? `Today: ${TARGET_LABELS[target]} (selected)`
-    : today.rest ? "Today: rest day. Lock in for a recovery plan, or pick a body part to train."
-    : `Today: ${split}`;
+  $("now-split").textContent = today.rest
+    ? "Today: rest day. Lock in for a recovery plan, or pick a body part to train."
+    : `Today: ${displayName(today)}`;
 
   const focusChoices = [[null, "Default"], ...Object.entries(TARGET_LABELS)];
   segmented($("focus"), focusChoices, target, (value) => {
@@ -238,8 +250,8 @@ function renderWorkout() {
   if (!today) return;
   const { lock, w } = today;
 
-  $("plan-title").textContent = w.rest ? w.title : `${w.title} · ${w.day} ${w.window.label.toLowerCase()}`;
-  $("plan-focus").textContent = w.focus;
+  $("plan-title").textContent = w.rest ? w.title : displayName(w);
+  $("plan-focus").textContent = w.rest ? w.focus : [`${w.day} ${w.window.label.toLowerCase()}`, displayDetail(w)].filter(Boolean).join(" · ");
   $("plan-minutes").textContent = w.rest ? "Rest" : `~${w.minutes} min`;
 
   const notes = w.rest ? [] : w.notes;
