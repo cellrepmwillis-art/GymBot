@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#c2410c">
+  <title>GymBot</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <h1>GymBot</h1>
+    <button id="open-settings" class="icon-btn" aria-label="Settings">⚙︎</button>
+  </header>
+
+  <main>
+    <section class="card now">
+      <div class="now-head">
+        <div>
+          <div id="now-day" class="big"></div>
+          <div id="now-time" class="muted"></div>
+        </div>
+        <span id="aim-chip" class="chip"></span>
+      </div>
+      <p id="now-split" class="now-split"></p>
+      <ol id="week" class="week" aria-label="This week"></ol>
+      <button id="lock-in" class="primary lock" type="button">Lock in</button>
+    </section>
+
+    <section id="plan" class="card" hidden aria-live="polite">
+      <div class="plan-head">
+        <div>
+          <h2 id="plan-title"></h2>
+          <p id="plan-focus" class="muted small"></p>
+        </div>
+        <span id="plan-minutes" class="chip"></span>
+      </div>
+      <ul id="plan-notes" class="notes small"></ul>
+      <h3>Warm-up</h3>
+      <p id="plan-warmup"></p>
+      <h3 id="lifts-title">Lifts</h3>
+      <ol id="plan-exercises" class="exercises"></ol>
+      <p id="plan-tip" class="muted small" hidden>Tap an exercise when you finish it.</p>
+      <h3 id="cardio-title">Cardio</h3>
+      <p id="plan-cardio"></p>
+      <div class="row">
+        <button id="shuffle" type="button">Different exercises</button>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="settings">
+    <form method="dialog" id="settings-form">
+      <h2>Settings</h2>
+      <fieldset class="profile">
+        <legend>Your plan (picks sets, reps and cardio)</legend>
+        <label class="field">
+          <span>Aim</span>
+          <select id="aim-input"></select>
+        </label>
+        <p class="muted small" id="aim-blurb"></p>
+        <label class="field">
+          <span>Gym</span>
+          <select id="gym-input"></select>
+        </label>
+      </fieldset>
+      <p class="muted small">
+        The week is push, pull, legs, twice, Monday to Saturday, with Sunday off. The time of day decides how long the
+        session is and how busy the gym is likely to be. A workout after midnight counts toward the day before, until 3am.
+        Your settings and the days you locked in are stored only in this browser.
+      </p>
+      <p class="muted small" id="version"></p>
+      <div class="row">
+        <button value="cancel" formnovalidate>Cancel</button>
+        <button value="save" class="primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
