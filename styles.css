@@ -163,7 +163,7 @@ dialog::backdrop { background: rgb(0 0 0 / 0.5); }
 .chat li { padding: 10px 12px; border-radius: 14px; white-space: pre-wrap; max-width: 90%; }
 .chat .q { justify-self: end; background: var(--accent); color: var(--accent-text); border-bottom-right-radius: 4px; }
 .chat .a { justify-self: start; background: var(--bg); border-bottom-left-radius: 4px; }
-dialog input[type="password"] { font: inherit; width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+dialog input[type="password"], dialog input[type="number"] { font: inherit; width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
 .top-actions { display: flex; gap: 8px; }
 
 /* Options screen */
@@ -254,3 +254,8 @@ main[hidden], .dock[hidden] { display: none; }
 .rest-bye { margin: 0 0 16px; }
 .rest-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .rest-actions button { padding: 14px; font-size: 1.05rem; border-radius: 12px; }
+
+.backup { border: 1px solid var(--border); border-radius: 12px; margin: 0 0 12px; padding: 8px 12px 4px; }
+.backup legend { font-size: 0.9rem; color: var(--muted); padding: 0 4px; }
+.backup-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+#backup-status:empty { display: none; }

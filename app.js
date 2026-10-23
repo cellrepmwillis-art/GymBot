@@ -2,7 +2,7 @@ import { dayKey, previousDay } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned } from "./workouts.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 5:00 AM";
+const VERSION = "2026-10-24 · 6:00 AM";
 const STORAGE_KEY = "gymbot";
 const KEEP_DAYS = 60;
 // Weight used for calories burned until one is entered.
@@ -526,6 +526,48 @@ function openSettings() {
 }
 
 $("open-settings").addEventListener("click", openSettings);
+
+// ---- Backup and restore ----
+
+// A backup is everything GymBot keeps, as one JSON file the person saves.
+// Today's Ask the trainer chat is left out; it starts over each day anyway.
+$("backup-btn").addEventListener("click", () => {
+  const { chat, ...data } = state;
+  const backup = { app: "gymbot", version: 1, savedAt: new Date().toISOString(), data };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `gymbot-backup-${dayKey()}.json`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
+  $("backup-status").textContent = `Saved ${link.download} to your downloads.`;
+});
+
+$("restore-btn").addEventListener("click", () => $("restore-file").click());
+
+$("restore-file").addEventListener("change", async () => {
+  const file = $("restore-file").files[0];
+  $("restore-file").value = "";
+  if (!file) return;
+  let backup;
+  try {
+    backup = JSON.parse(await file.text());
+  } catch {
+    backup = null;
+  }
+  if (backup?.app !== "gymbot" || typeof backup.data !== "object" || typeof backup.data.locked !== "object") {
+    $("backup-status").textContent = "That file isn't a GymBot backup.";
+    return;
+  }
+  const when = new Date(backup.savedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+  if (!confirm(`Restore the backup from ${when}? It replaces GymBot's current settings and workouts.`)) return;
+  const restored = { ...load(), ...backup.data, chat: null };
+  for (const key of Object.keys(state)) delete state[key];
+  Object.assign(state, restored);
+  save();
+  $("settings").close("restored");
+  render();
+});
 
 $("settings").addEventListener("close", () => {
   if ($("settings").returnValue !== "save") return;

@@ -183,6 +183,20 @@
         CookBot on this site already has a key.
         <button type="button" class="link-btn" id="use-cookbot-key">Use the same key</button>
       </p>
+      <fieldset class="backup">
+        <legend>Backup</legend>
+        <p class="muted small">
+          Clearing Chrome's "Cookies and site data" erases GymBot's settings, locked workouts and calories.
+          Back up first, then restore after.
+        </p>
+        <div class="backup-actions">
+          <button type="button" id="backup-btn">Back up</button>
+          <button type="button" id="restore-btn">Restore</button>
+        </div>
+        <input type="file" id="restore-file" accept=".json,application/json" hidden>
+        <p class="muted small" id="backup-status" role="status"></p>
+        <p class="muted small">The file includes your API key, if you added one, so keep it to yourself.</p>
+      </fieldset>
       <p class="muted small">
         Ask the trainer sends your question and today's workout to the Anthropic API (Claude Sonnet 5.5) using your own key
         from console.anthropic.com. A question costs about a penny. Everything else in GymBot is free and works offline.
