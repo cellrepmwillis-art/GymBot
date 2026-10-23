@@ -94,7 +94,7 @@ button.primary { background: var(--accent); color: var(--accent-text); border-co
   white-space: nowrap;
 }
 
-.now-head, .plan-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.now-head, .plan-head { flex-wrap: wrap; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .now-split { margin: 12px 0; font-weight: 600; }
 
 .week { list-style: none; margin: 0 0 14px; padding: 0; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
@@ -172,3 +172,7 @@ dialog::backdrop { background: rgb(0 0 0 / 0.5); }
 .focus { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
 .focus button { padding: 6px 12px; border-radius: 999px; font-size: 0.9rem; background: var(--bg); }
 .focus button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+.field[hidden], .row[hidden], h3[hidden], p[hidden] { display: none; }
+.sources { margin-top: 14px; }
+.profile select { margin-bottom: 0; }
+.now-head > div, .plan-head > div { min-width: 0; flex: 1 1 200px; }

@@ -40,8 +40,10 @@
         <span id="plan-minutes" class="chip"></span>
       </div>
       <ul id="plan-notes" class="notes small"></ul>
-      <h3>Warm-up</h3>
+      <h3 id="warmup-title">Warm-up</h3>
       <p id="plan-warmup"></p>
+      <h3 id="run-title">Run</h3>
+      <p id="plan-run"></p>
       <h3 id="lifts-title">Lifts</h3>
       <ol id="plan-exercises" class="exercises"></ol>
       <p id="plan-tip" class="muted small" hidden>Tap an exercise when you finish it.</p>
@@ -50,6 +52,7 @@
       <div class="row">
         <button id="shuffle" type="button">Different exercises</button>
       </div>
+      <p id="plan-sources" class="muted small sources"></p>
     </section>
   </main>
 
@@ -67,6 +70,31 @@
           <span>Gym</span>
           <select id="gym-input"></select>
         </label>
+      </fieldset>
+      <fieldset class="profile">
+        <legend>AI Trainer</legend>
+        <label class="field">
+          <span>Train like a</span>
+          <select id="trainer-input"></select>
+        </label>
+        <p class="muted small" id="trainer-blurb"></p>
+        <label class="field" id="shot-field">
+          <span>Weekly shot day (lighter workouts that day and the next)</span>
+          <select id="shot-input">
+            <option value="">Not set</option>
+            <option value="1">Monday</option>
+            <option value="2">Tuesday</option>
+            <option value="3">Wednesday</option>
+            <option value="4">Thursday</option>
+            <option value="5">Friday</option>
+            <option value="6">Saturday</option>
+            <option value="0">Sunday</option>
+          </select>
+        </label>
+        <p class="muted small">
+          For now the trainer follows built-in rules based on published guidance (sources are listed under each workout),
+          not a live AI. It isn't medical advice.
+        </p>
       </fieldset>
       <p class="muted small">
         The week is push, pull, legs, twice, Monday to Saturday, with Sunday off. The time of day decides how long the

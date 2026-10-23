@@ -5,6 +5,9 @@
 // Barbells and squat racks are only used for Anytime Fitness style gyms,
 // since most Planet Fitness clubs don't have them.
 import { RESET_HOUR } from "./day.js";
+import { TRAINERS, RUNNER_LEGS } from "./trainers.js";
+
+export { TRAINERS };
 
 // Aims match CookBot's Settings: "gain", "maintain" or "cut".
 export const AIMS = {
@@ -288,24 +291,47 @@ function warmup(window, first) {
 
 const pick = (options, i) => options[((i % options.length) + options.length) % options.length];
 
+// Sets, reps and rest from the aim, with the trainer's changes on top.
+function schemeFor(coach, plan) {
+  const base = AIMS[plan];
+  const changes = coach.scheme?.(plan) ?? {};
+  return { main: { ...base.main, ...changes.main }, accessory: { ...base.accessory, ...changes.accessory }, tip: base.tip };
+}
+
+// Splits the trainers can ask for by name, besides the week's own.
+const splitByKey = (key) => (key === "runnerLegs" ? RUNNER_LEGS : SPLITS[key] ?? TARGETS[key]);
+
 // The workout for `date`. `shuffle` moves every exercise to its next choice,
 // for the "Different exercises" button. `target` is a body part from TARGETS
-// instead of today's split. Sunday without a target returns a rest day.
-export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, target = null } = {}) {
+// instead of today's split. `trainer` is a key of TRAINERS, and `shotDay` the
+// weekday (Sunday is 0) of a weekly GLP-1 shot. Sunday without a target
+// returns a rest day.
+export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, target = null, trainer = "none", shotDay = null } = {}) {
   const plan = AIMS[aim] ? aim : "maintain";
-  const scheme = AIMS[plan];
+  const coachKey = TRAINERS[trainer] ? trainer : "none";
+  const coach = TRAINERS[coachKey];
+  const scheme = schemeFor(coach, plan);
   const day = gymDay(date);
   const window = timeWindow(date);
-  const split = TARGETS[target] ? { key: target, ...TARGETS[target] } : splitFor(day);
-  const base = { day: DAY_NAMES[day], window, aim: plan };
+  const shot = shotDay === null || shotDay === "" ? null : Number(shotDay);
+  const shotSoon = coachKey === "glp1" && shot !== null && (day === shot || day === (shot + 1) % 7);
+  const runDay = TARGETS[target] ? null : coach.runs?.[day];
+  let split = null;
+  if (TARGETS[target]) split = { key: target, ...TARGETS[target] };
+  else if (runDay) split = runDay.split ? { key: runDay.split, ...splitByKey(runDay.split) } : null;
+  else split = splitFor(day);
+  if (split && coach.mainSwap?.[split.key] && !TARGETS[target]) split = { ...split, slots: [coach.mainSwap[split.key], ...split.slots.slice(1)] };
+  const ctx = { plan, split, window, gym, shotSoon };
+  const sources = coach.sources;
+  const base = { day: DAY_NAMES[day], window, aim: plan, trainer: coachKey, sources };
 
-  if (!split) {
+  if (!split && !runDay) {
     return {
       ...base,
       rest: true,
       title: "Rest day",
-      focus: "Recover for Monday's push day",
-      steps: [
+      focus: "Recover for Monday",
+      steps: coach.restSteps?.(plan) ?? [
         plan === "cut" ? "Walk 45–60 min, or get 10,000 steps." : "Walk 20–40 min at an easy pace.",
         "10 min of stretching: hips, hamstrings, chest and shoulders.",
         plan === "gain" ? "Eat at your calorie goal anyway; muscle is built on rest days." : "Get to bed on time; sleep is when you recover.",
@@ -313,9 +339,12 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
     };
   }
 
+  const budget = Math.min(window.budget, coach.maxLifts ?? 6, shotSoon ? 4 : 6);
   const allowed = (option) => gym === "af" || !option.barbell;
-  const slots = split.slots.slice(0, window.budget).map((slot) => slot.filter(allowed));
-  const superset = window.key === "lunch" || (plan === "cut" && window.crowd !== "packed");
+  const slots = split ? split.slots.slice(0, budget).map((slot) => slot.filter(allowed)) : [];
+  const superset = coach.superset === "never" ? false
+    : coach.superset === "always" ? window.crowd !== "packed" || window.key === "lunch"
+    : window.key === "lunch" || (plan === "cut" && window.crowd !== "packed");
   const exercises = slots.map((options, i) => {
     const choice = pick(options, shuffle);
     const alternative = options.length > 1 ? pick(options, shuffle + 1).name : null;
@@ -336,21 +365,28 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
     }
   }
 
-  const [cardioMinutes, cardioText] = cardio(plan, split, window);
-  const minutes = 8 + exercises.reduce((total, e) => total + (e.main && !split.small ? 12 : superset ? 5 : 7), 0) + cardioMinutes;
+  // A run day's run replaces the cardio after lifting.
+  const [runMinutes, runText] = runDay ? runDay.run(ctx) : [0, null];
+  const [cardioMinutes, cardioText] = runDay ? [0, null] : coach.cardio?.(ctx) ?? cardio(plan, split, window);
+  const liftMinutes = exercises.reduce((total, e) => total + (e.main && !split.small ? 12 : superset ? 5 : 7), 0);
+  const minutes = (exercises.length ? 8 : 0) + liftMinutes + cardioMinutes + runMinutes;
 
-  const notes = [window.note, scheme.tip];
+  // The time-of-day note is about lifting, so a run-only day skips it.
+  const notes = [...(split ? [window.note] : []), ...(coach.notes?.(ctx) ?? [scheme.tip])];
   if (window.key === "late" && gym === "pf") notes.push("Many Planet Fitness clubs aren't open 24 hours anymore, so check your club's hours.");
 
   return {
     ...base,
     rest: false,
-    split: split.key,
+    split: split?.key ?? null,
     target: TARGETS[target] ? target : null,
-    title: split.title,
-    focus: split.focus,
+    title: runDay?.title ?? split.title,
+    focus: runDay ? (split ? `Run, then ${split.focus.toLowerCase()}` : "Running only today") : split.focus,
     minutes: Math.round(minutes / 5) * 5,
-    warmup: warmup(window, exercises[0].name),
+    run: runText,
+    warmup: runDay
+      ? `5 min brisk walk, then leg swings and a few 20-second strides.${exercises.length ? " After the run, 1 light set of each lift is enough." : ""}`
+      : warmup(window, exercises[0].name),
     exercises,
     superset,
     cardio: cardioText,

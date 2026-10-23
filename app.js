@@ -1,8 +1,8 @@
 import { dayKey, previousDay } from "./day.js";
-import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, suggest, gymDay, timeWindow, splitFor } from "./workouts.js";
+import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow } from "./workouts.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-23 · 10:00 PM";
+const VERSION = "2026-10-23 · 11:00 PM";
 const STORAGE_KEY = "gymbot";
 const KEEP_DAYS = 60;
 
@@ -17,7 +17,9 @@ function load() {
   // it was locked in, even if the app is opened again later.
   // focus: { day, target }, the body part picked on the main screen. It only
   // applies to that day; the next day starts back on the split.
-  const defaults = { aim: "maintain", gym: "pf", locked: {}, focus: null };
+  // trainer: a key of TRAINERS (the "AI Trainer" setting); shotDay: the
+  // weekday of a weekly GLP-1 shot, or "".
+  const defaults = { aim: "maintain", gym: "pf", trainer: "none", shotDay: "", locked: {}, focus: null };
   try {
     const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (data) return { ...defaults, ...data };
@@ -42,9 +44,16 @@ const state = load();
 // The body part picked for today, or null for today's split.
 const todaysTarget = () => (state.focus?.day === dayKey() && TARGETS[state.focus.target] ? state.focus.target : null);
 
-function renderFocus(split) {
+// The workout for `date` with the current settings.
+const workout = (date, target, shuffle = 0) =>
+  suggest({ date, aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay, target, shuffle });
+
+// Short trainer names for the chip on the main screen.
+const TRAINER_CHIPS = { bodybuilder: "Bodybuilder", powerlifter: "Powerlifter", marathon: "Marathon", weightLoss: "Weight loss", glp1: "GLP-1" };
+
+function renderFocus(planned) {
   const target = todaysTarget();
-  const choices = [[null, split ? `${split.title} (today's split)` : "Rest (today's plan)"], ...Object.entries(TARGET_LABELS)];
+  const choices = [[null, planned.rest ? "Rest (today's plan)" : `${planned.title} (today's plan)`], ...Object.entries(TARGET_LABELS)];
   $("focus").replaceChildren(...choices.map(([value, label]) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -81,18 +90,20 @@ function renderNow() {
   const now = new Date();
   const day = gymDay(now);
   const window = timeWindow(now);
-  const split = splitFor(day);
   $("now-day").textContent = DAY_NAMES[day];
   const clock = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
   $("now-time").textContent = `${window.label} · ${clock} · gym is usually ${window.crowd}`;
-  $("aim-chip").textContent = AIMS[state.aim]?.label ?? "Maintain";
-  const target = todaysTarget();
-  $("now-split").textContent = target
-    ? `Today: ${TARGETS[target].title} · ${TARGETS[target].focus}`
-    : split ? `Today: ${split.title} · ${split.focus}` : "Today: rest day. Lock in for a recovery plan, or pick a body part to train.";
-  renderFocus(split);
+  const aim = AIMS[state.aim]?.label ?? "Maintain";
+  const coach = TRAINER_CHIPS[state.trainer];
+  $("aim-chip").textContent = coach ? `${aim} · ${coach}` : aim;
+  const planned = workout(now, null);
+  const today = workout(now, todaysTarget());
+  $("now-split").textContent = today.rest
+    ? "Today: rest day. Lock in for a recovery plan, or pick a body part to train."
+    : `Today: ${today.title} · ${today.focus}`;
+  renderFocus(planned);
 
-  const today = dayKey(now);
+  const todayKey = dayKey(now);
   const week = $("week");
   week.replaceChildren();
   weekKeys(now).forEach((key, i) => {
@@ -100,11 +111,11 @@ function renderNow() {
     const name = DAY_NAMES[(i + 1) % 7].slice(0, 3);
     const mark = state.locked[key] ? "✓" : i === 6 ? "–" : "";
     li.innerHTML = `${name}<span class="mark">${mark}</span>`;
-    li.classList.toggle("today", key === today);
+    li.classList.toggle("today", key === todayKey);
     li.classList.toggle("done", Boolean(state.locked[key]));
     week.append(li);
   });
-  const lock = state.locked[today];
+  const lock = state.locked[todayKey];
   $("lock-in").textContent = lock ? "Locked in ✓ (lock in again)" : "Lock in";
 }
 
@@ -114,7 +125,7 @@ function renderPlan() {
   const lock = state.locked[dayKey()];
   $("plan").hidden = !lock;
   if (!lock) return;
-  const w = suggest({ date: new Date(lock.at), aim: state.aim, gym: state.gym, shuffle: lock.shuffle, target: lock.focus });
+  const w = workout(new Date(lock.at), lock.focus, lock.shuffle);
 
   $("plan-title").textContent = w.rest ? w.title : `${w.title} · ${w.day} ${w.window.label.toLowerCase()}`;
   $("plan-focus").textContent = w.focus;
@@ -123,9 +134,16 @@ function renderPlan() {
   const notes = $("plan-notes");
   notes.replaceChildren(...(w.rest ? [] : w.notes).map((text) => Object.assign(document.createElement("li"), { textContent: text })));
 
-  for (const id of ["plan-warmup", "cardio-title", "plan-cardio", "shuffle", "plan-tip"]) $(id).hidden = w.rest;
-  $("plan-warmup").previousElementSibling.hidden = w.rest;
+  const lifts = !w.rest && w.exercises.length > 0;
+  for (const id of ["warmup-title", "plan-warmup"]) $(id).hidden = w.rest;
+  for (const id of ["run-title", "plan-run"]) $(id).hidden = !w.run;
+  for (const id of ["cardio-title", "plan-cardio"]) $(id).hidden = !w.cardio;
+  for (const id of ["shuffle", "plan-tip"]) $(id).hidden = !lifts;
+  $("shuffle").parentElement.hidden = !lifts;
+  $("lifts-title").hidden = !w.rest && !lifts;
   $("lifts-title").textContent = w.rest ? "Today" : w.superset ? "Lifts (A and B are supersets)" : "Lifts";
+  $("plan-sources").hidden = !w.sources.length;
+  $("plan-sources").textContent = `Trainer: ${TRAINERS[w.trainer].label}. Based on ${w.sources.join(", ")}.`;
 
   const list = $("plan-exercises");
   list.replaceChildren();
@@ -134,7 +152,9 @@ function renderPlan() {
     return;
   }
   $("plan-warmup").textContent = w.warmup;
-  $("plan-cardio").textContent = w.cardio;
+  $("plan-run").textContent = w.run ?? "";
+  $("run-title").textContent = lifts ? "Run first" : "Run";
+  $("plan-cardio").textContent = w.cardio ?? "";
 
   const done = new Set(lock.done ?? []);
   w.exercises.forEach((e, i) => {
@@ -199,15 +219,20 @@ $("shuffle").addEventListener("click", () => {
 $("version").textContent = `Version ${VERSION}`;
 for (const [value, { label }] of Object.entries(AIMS)) $("aim-input").add(new Option(label, value));
 for (const [value, { label }] of Object.entries(GYMS)) $("gym-input").add(new Option(label, value));
+for (const [value, { label }] of Object.entries(TRAINERS)) $("trainer-input").add(new Option(label, value));
 
 function showBlurb() {
   $("aim-blurb").textContent = AIMS[$("aim-input").value]?.blurb ?? "";
+  $("trainer-blurb").textContent = TRAINERS[$("trainer-input").value]?.blurb ?? "";
+  $("shot-field").hidden = $("trainer-input").value !== "glp1";
 }
-$("aim-input").addEventListener("input", showBlurb);
+$("settings-form").addEventListener("input", showBlurb);
 
 function openSettings() {
   $("aim-input").value = AIMS[state.aim] ? state.aim : "maintain";
   $("gym-input").value = GYMS[state.gym] ? state.gym : "pf";
+  $("trainer-input").value = TRAINERS[state.trainer] ? state.trainer : "none";
+  $("shot-input").value = state.shotDay;
   showBlurb();
   $("settings").showModal();
 }
@@ -218,6 +243,8 @@ $("settings").addEventListener("close", () => {
   if ($("settings").returnValue !== "save") return;
   state.aim = $("aim-input").value;
   state.gym = $("gym-input").value;
+  state.trainer = $("trainer-input").value;
+  state.shotDay = $("shot-input").value;
   save();
   render();
 });

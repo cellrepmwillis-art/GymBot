@@ -31,6 +31,18 @@ A workout picker that runs on your phone. Tap **Lock in** and it suggests today'
   | Maintain | 3 × 8–10, rest 2 min | 3 × 10–12, rest 75 sec | 10–20 min steady |
   | Cut | 3 × 6–8, rest 2 min (heavy, to keep muscle) | 3 × 12–15, rest 45–60 sec, as supersets when the gym isn't packed | 15–30 min incline treadmill walk |
 
+- **AI Trainer (Settings ⚙︎):** "Train like a" changes the plan to match published guidance for that kind of athlete or situation. For now it uses built-in rules, not a live AI, and each workout lists the sources it follows.
+
+  | Trainer | What changes | Based on |
+  |---------|--------------|----------|
+  | Off | The standard plan above | |
+  | Bodybuilder | 6–10 reps on the main lift, 8–12 (10–15 on a cut) on the rest, 60–90 sec rests, sets to 1–2 reps short of failure | ACSM progression models, Bodybuilding.com, Schoenfeld's hypertrophy research |
+  | Powerlifter | Main lift 4–5 × 3–5 with 3–5 min rests, deadlift added on Pull A, 5 exercises, no supersets, light cardio. Suggests an Anytime Fitness style gym, since Planet Fitness has no barbells for squats or deadlifts | ACSM, NSCA |
+  | Marathon runner | A running week: easy run + upper body, speed intervals, easy run + single-leg strength, tempo run + upper body, cross-training + core, long run, Sunday off. Lifting is 4 exercises, done after the run | ACSM, Runner's World, the 80/20 guideline |
+  | Weight loss | Circuit-style supersets with 30–45 sec rests and 35–45 min of moderate cardio a day, about 200–300 min a week | HHS Physical Activity Guidelines, American Heart Association, ACSM position stand on weight loss, LiveStrong |
+  | GLP-1 medication (Mounjaro, Zepbound, Ozempic, Wegovy) | Lifting comes first to keep muscle, 5 exercises with full rests and no supersets, easy cardio, tips on eating before training, water and dizziness. With a weekly shot day set, that day and the next are lighter (4 exercises and a walk) | 2025 joint advisory on GLP-1 nutrition (ACLM, ASN, OMA, The Obesity Society), HHS, AHA, the drugs' prescribing information |
+
+  None of this is medical advice. On a GLP-1 medication, check with your prescriber before starting a new program.
 - **Gym (Settings ⚙︎):** "Planet Fitness style" uses Smith machines, dumbbells, cables and machines only. "Anytime Fitness style" also uses barbells and squat racks for the main lifts.
 - **Different exercises:** swaps every exercise for its next option. The same exercises come back each week by default, so you can add weight or reps week to week.
 - **Check off exercises:** tap one when you finish it. The week strip marks every day you locked in.
@@ -56,7 +68,8 @@ python3 -m http.server 8000
 | `index.html`, `styles.css` | The single screen and settings dialog |
 | `app.js` | Lock in, the week strip, checking off exercises, local storage |
 | `workouts.js` | The split, body-part workouts, exercise choices, time-of-day windows and aims |
+| `trainers.js` | The AI Trainer profiles: bodybuilder, powerlifter, marathon, weight loss and GLP-1 |
 | `day.js` | The 3am day boundary |
 | `sw.js`, `manifest.webmanifest` | Offline caching and home-screen install |
 
-Tests for the schedule, body-part workouts, time of day, aims and gym equipment: `node --test`
+Tests for the schedule, body-part workouts, trainers, time of day, aims and gym equipment: `node --test`
