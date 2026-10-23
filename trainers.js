@@ -9,7 +9,7 @@
 //   runs           a different week, with a run each day (marathon)
 //   mainSwap       a different first exercise on some split days
 //   notes(ctx)     tips shown with the workout
-//   restSteps(plan) Sunday's plan
+//   restSteps(plan) the rest day's plan
 // ctx is { plan, split, window, gym, shotSoon }.
 
 import { MET } from "./met.js";
@@ -91,7 +91,8 @@ export const TRAINERS = {
     }),
     maxLifts: 4,
     superset: "never",
-    // Day of the week (Sunday is 0) to a run plus, on some days, lifting.
+    // Position in the training week (1 is the day after the rest day, so
+    // Monday with Sunday off) to a run plus, on some days, lifting.
     runs: {
       1: { title: "Easy run + upper body", split: "pushA", run: (ctx) => easyRun(ctx, ctx.plan === "cut" ? 10 : 0) },
       2: { title: "Speed work", run: (ctx) => (ctx.window.budget < 6

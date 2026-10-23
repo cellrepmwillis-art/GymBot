@@ -194,3 +194,14 @@ test("rest-day walks and stretching count; advice doesn't", () => {
   const sunday = suggest({ date: at(6, 10), aim: "cut" });
   assert.equal(sunday.items[0].minutes, 52.5);
 });
+
+test("the rest day can be any weekday; the split follows it", () => {
+  // Wednesday off: Thursday is Push A, Tuesday Legs B.
+  const titles = [0, 1, 2, 3, 4, 5, 6].map((d) => suggest({ date: at(d, 10), restDay: 3 }).title);
+  assert.deepEqual(titles, ["Pull B", "Legs B", "Rest day", "Push A", "Pull A", "Legs A", "Push B"]);
+  assert.equal(suggest({ date: at(2, 10), restDay: 3 }).focus, "Recover for Thursday");
+  assert.equal(suggest({ date: at(6, 10), restDay: "3" }).title, "Push B");
+  // The marathon week moves too: the long run is the day before the rest day.
+  assert.equal(suggest({ date: at(1, 7), trainer: "marathon", restDay: 3 }).title, "Long run");
+  assert.equal(suggest({ date: at(6, 10), restDay: 0 }).focus, "Recover for Monday");
+});

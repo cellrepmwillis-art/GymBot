@@ -220,8 +220,13 @@ export const TARGETS = {
 
 export const TARGET_LABELS = { chest: "Chest", back: "Back", shoulders: "Shoulders", biceps: "Biceps", triceps: "Triceps", legs: "Legs", abs: "Abs" };
 
-// Sunday is 0 in JavaScript. Monday to Saturday run the split twice.
+// The training week by position: 0 is the rest day (Sunday by default), and
+// the six days after it run the split twice, so with Sunday off, Monday is
+// Push A and Saturday Legs B.
 const WEEK = [null, "pushA", "pullA", "legsA", "pushB", "pullB", "legsB"];
+
+// Position in the training week of weekday `day` (Sunday is 0 in JavaScript).
+export const weekPosition = (day, restDay = 0) => (day - restDay + 7) % 7;
 
 // Times of day, by the hour they start. "budget" is how many exercises fit,
 // "crowd" how busy a typical gym is then.
@@ -260,8 +265,8 @@ export function gymDay(date = new Date()) {
 
 export const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-export function splitFor(day) {
-  const key = WEEK[day];
+export function splitFor(day, restDay = 0) {
+  const key = WEEK[weekPosition(day, restDay)];
   return key ? { key, ...SPLITS[key] } : null;
 }
 
@@ -306,9 +311,9 @@ const splitByKey = (key) => (key === "runnerLegs" ? RUNNER_LEGS : SPLITS[key] ??
 // The workout for `date`. `shuffle` moves every exercise to its next choice,
 // for the "Different exercises" button. `target` is a body part from TARGETS
 // instead of today's split. `trainer` is a key of TRAINERS, and `shotDay` the
-// weekday (Sunday is 0) of a weekly GLP-1 shot. Sunday without a target
-// returns a rest day.
-export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, target = null, trainer = "none", shotDay = null } = {}) {
+// weekday (Sunday is 0) of a weekly GLP-1 shot. `restDay` is the weekday off;
+// on it, without a target, this returns a rest day.
+export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, target = null, trainer = "none", shotDay = null, restDay = 0 } = {}) {
   const plan = AIMS[aim] ? aim : "maintain";
   const coachKey = TRAINERS[trainer] ? trainer : "none";
   const coach = TRAINERS[coachKey];
@@ -317,11 +322,12 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
   const window = timeWindow(date);
   const shot = shotDay === null || shotDay === "" ? null : Number(shotDay);
   const shotSoon = coachKey === "glp1" && shot !== null && (day === shot || day === (shot + 1) % 7);
-  const runDay = TARGETS[target] ? null : coach.runs?.[day];
+  const off = Number(restDay) || 0;
+  const runDay = TARGETS[target] ? null : coach.runs?.[weekPosition(day, off)];
   let split = null;
   if (TARGETS[target]) split = { key: target, ...TARGETS[target] };
   else if (runDay) split = runDay.split ? { key: runDay.split, ...splitByKey(runDay.split) } : null;
-  else split = splitFor(day);
+  else split = splitFor(day, off);
   if (split && coach.mainSwap?.[split.key] && !TARGETS[target]) split = { ...split, slots: [coach.mainSwap[split.key], ...split.slots.slice(1)] };
   const ctx = { plan, split, window, gym, shotSoon };
   const sources = coach.sources;
@@ -337,7 +343,7 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
       ...base,
       rest: true,
       title: "Rest day",
-      focus: "Recover for Monday",
+      focus: `Recover for ${DAY_NAMES[(day + 1) % 7]}`,
       steps,
       items: steps.map((text, i) => ({ id: `step${i}`, kind: "step", name: text, ...restStepEffort(text) })),
     };

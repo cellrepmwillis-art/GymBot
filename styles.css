@@ -244,3 +244,14 @@ select { font: inherit; width: 100%; padding: 10px 8px; border-radius: 10px; bor
 .hint { margin: 10px 0 0; }
 .ask-about { font-size: 0.85rem; }
 main[hidden], .dock[hidden] { display: none; }
+
+/* Rest-day screen */
+.rest-card { text-align: center; padding: 32px 20px; margin-top: 8vh; }
+.rest-day { margin: 0; text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.8rem; }
+.rest-title { font-size: 2rem; margin: 4px 0 20px; }
+.quote { margin: 0 0 24px; }
+.quote p { font-size: 1.2rem; line-height: 1.5; font-style: italic; margin: 0 0 10px; }
+.quote footer { color: var(--muted); }
+.rest-bye { margin: 0 0 16px; }
+.rest-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rest-actions button { padding: 14px; font-size: 1.05rem; border-radius: 12px; }

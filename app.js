@@ -2,7 +2,7 @@ import { dayKey, previousDay } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned } from "./workouts.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 2:00 AM";
+const VERSION = "2026-10-24 · 3:00 AM";
 const STORAGE_KEY = "gymbot";
 const KEEP_DAYS = 60;
 // Weight used for calories burned until one is entered.
@@ -23,13 +23,15 @@ function load() {
   // only applies to that day; the next day starts back on the split.
   // trainer: a key of TRAINERS (the "AI Trainer" setting); shotDay: the
   // weekday of a weekly GLP-1 shot, or "".
+  // restDay: the weekday off (Sunday is 0). restAck: the day "Lock in anyway"
+  // was tapped on the rest day, so the reminder shows once.
   // weightLb: for calories burned; null uses CookBot's weight, if any.
   // apiKey: the person's Anthropic API key, for Ask the trainer. chat: today's
   // questions, { day, history, shown: [{ q, a }], context }, where history is
   // the conversation as sent to the API and context the last workout
   // description sent with a question.
   const defaults = {
-    aim: "maintain", gym: "pf", trainer: "none", shotDay: "", weightLb: null,
+    aim: "maintain", gym: "pf", trainer: "none", shotDay: "", restDay: 0, restAck: null, weightLb: null,
     locked: {}, focus: null, apiKey: "", chat: null,
   };
   try {
@@ -76,7 +78,7 @@ const todaysTarget = () => (state.focus?.day === dayKey() && TARGETS[state.focus
 
 // The workout for `date` with the current settings.
 const workout = (date, target, shuffle = 0) =>
-  suggest({ date, aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay, target, shuffle });
+  suggest({ date, aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay, restDay: state.restDay, target, shuffle });
 
 // Today's locked-in workout, or null.
 function lockedWorkout() {
@@ -108,10 +110,12 @@ function lockIcon(locked) {
   return `<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="${shackle}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><rect x="5" y="11" width="14" height="10" rx="2.5" fill="currentColor"/></svg>`;
 }
 
-function showScreen(workoutOpen) {
-  $("options-screen").hidden = workoutOpen;
-  $("workout-screen").hidden = !workoutOpen;
-  $("open-ask").hidden = !workoutOpen;
+// "options", "workout" or "rest".
+function showScreen(name) {
+  $("options-screen").hidden = name !== "options";
+  $("workout-screen").hidden = name !== "workout";
+  $("rest-screen").hidden = name !== "rest";
+  $("open-ask").hidden = name !== "workout";
 }
 
 // ---- Options screen ----
@@ -195,7 +199,7 @@ function renderOptions() {
     const mark = document.createElement("span");
     mark.className = "mark";
     if (lock?.burned) mark.textContent = lock.burned;
-    else mark.textContent = lock ? "✓" : i === 6 ? "–" : "";
+    else mark.textContent = lock ? "✓" : (i + 1) % 7 === Number(state.restDay) ? "–" : "";
     li.append(mark);
     li.classList.toggle("today", key === todayKey);
     li.classList.toggle("done", Boolean(lock?.done?.length));
@@ -241,6 +245,37 @@ $("lock-in").addEventListener("click", () => {
   save();
   render();
   window.scrollTo({ top: 0 });
+});
+
+// ---- Rest-day screen ----
+
+// One per rest day, in turn.
+const REST_QUOTES = [
+  ["Take rest; a field that has rested gives a bountiful crop.", "Ovid"],
+  ["Rest is not idleness, and to lie sometimes on the grass under trees on a summer's day, listening to the murmur of the water, or watching the clouds float across the sky, is by no means a waste of time.", "John Lubbock"],
+  ["Almost everything will work again if you unplug it for a few minutes, including you.", "Anne Lamott"],
+  ["Muscles are torn in the gym, fed in the kitchen and built in bed.", "Gym saying"],
+];
+
+function renderRest() {
+  const now = new Date();
+  $("rest-day").textContent = DAY_NAMES[gymDay(now)];
+  const weeks = Math.floor(new Date(dayKey(now)).getTime() / (7 * 24 * 60 * 60 * 1000));
+  const [quote, who] = REST_QUOTES[weeks % REST_QUOTES.length];
+  $("rest-quote").textContent = `“${quote}”`;
+  $("rest-cite").textContent = `— ${who}`;
+}
+
+$("rest-exit").addEventListener("click", () => {
+  // Pages can only close themselves in some browsers; otherwise say goodbye.
+  window.close();
+  $("rest-bye").hidden = false;
+});
+
+$("rest-anyway").addEventListener("click", () => {
+  state.restAck = dayKey();
+  save();
+  render();
 });
 
 // ---- Workout screen ----
@@ -478,6 +513,7 @@ $("use-cookbot-key").addEventListener("click", () => {
 });
 
 function openSettings() {
+  $("rest-input").value = String(state.restDay);
   $("weight-input").value = state.weightLb ?? "";
   $("key-input").value = state.apiKey;
   showSettingsHints();
@@ -488,6 +524,7 @@ $("open-settings").addEventListener("click", openSettings);
 
 $("settings").addEventListener("close", () => {
   if ($("settings").returnValue !== "save") return;
+  state.restDay = Number($("rest-input").value);
   const lb = Number($("weight-input").value);
   state.weightLb = lb > 0 ? lb : null;
   state.apiKey = $("key-input").value.trim();
@@ -497,12 +534,24 @@ $("settings").addEventListener("close", () => {
 
 // ---- Start ----
 
+// On the rest day the app opens on a reminder instead of the options, until
+// "Lock in anyway" (or a workout already locked in today).
+function screenNow() {
+  const today = dayKey();
+  const lock = state.locked[today];
+  if (lock?.active) return "workout";
+  if (gymDay() === Number(state.restDay) && !lock && state.restAck !== today) return "rest";
+  return "options";
+}
+
 function render() {
-  const open = Boolean(state.locked[dayKey()]?.active);
-  showScreen(open);
-  if (open) {
+  const screen = screenNow();
+  showScreen(screen);
+  if (screen === "workout") {
     renderWorkout();
     renderChat();
+  } else if (screen === "rest") {
+    renderRest();
   } else {
     renderOptions();
   }

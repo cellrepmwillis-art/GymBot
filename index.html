@@ -19,6 +19,24 @@
     </div>
   </header>
 
+  <!-- Rest day: shown instead of the options when the app opens on the rest
+       day chosen in Settings. -->
+  <main id="rest-screen" hidden>
+    <section class="card rest-card">
+      <p class="muted rest-day" id="rest-day"></p>
+      <h2 class="rest-title">Rest day</h2>
+      <blockquote class="quote">
+        <p id="rest-quote"></p>
+        <footer id="rest-cite"></footer>
+      </blockquote>
+      <p id="rest-bye" class="muted rest-bye" hidden>Enjoy the rest. You can close the app whenever you're ready.</p>
+      <div class="rest-actions">
+        <button id="rest-exit" type="button">Exit</button>
+        <button id="rest-anyway" class="primary" type="button">Lock in anyway</button>
+      </div>
+    </section>
+  </main>
+
   <!-- Options: what you see when the app opens. -->
   <main id="options-screen">
     <section class="card now">
@@ -141,6 +159,18 @@
     <form method="dialog" id="settings-form">
       <h2>Settings</h2>
       <label class="field">
+        <span>Rest day (the week's workouts run the six days after it)</span>
+        <select id="rest-input">
+          <option value="0">Sunday</option>
+          <option value="1">Monday</option>
+          <option value="2">Tuesday</option>
+          <option value="3">Wednesday</option>
+          <option value="4">Thursday</option>
+          <option value="5">Friday</option>
+          <option value="6">Saturday</option>
+        </select>
+      </label>
+      <label class="field">
         <span>Your weight (lb), for calories burned</span>
         <input id="weight-input" type="number" min="50" max="700" step="any" inputmode="decimal">
       </label>
@@ -162,7 +192,7 @@
         its minutes and your weight. Real burn varies from person to person.
       </p>
       <p class="muted small">
-        The week is push, pull, legs, twice, Monday to Saturday, with Sunday off. The time of day decides how long the
+        The week is push, pull, legs, twice, on the six days after your rest day. The time of day decides how long the
         session is and how busy the gym is likely to be. A workout after midnight counts toward the day before, until 3am.
         The AI Trainer follows built-in rules based on published guidance, not a live AI, and isn't medical advice.
         Your settings and workouts are stored only in this browser.
