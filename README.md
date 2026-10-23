@@ -46,7 +46,14 @@ A workout picker that runs on your phone. Tap **Lock in** and it suggests today'
 - **Gym (Settings ⚙︎):** "Planet Fitness style" uses Smith machines, dumbbells, cables and machines only. "Anytime Fitness style" also uses barbells and squat racks for the main lifts.
 - **Different exercises:** swaps every exercise for its next option. The same exercises come back each week by default, so you can add weight or reps week to week.
 - **Check off exercises:** tap one when you finish it. The week strip marks every day you locked in.
-- **No accounts.** Your settings and locked-in days are stored only in your browser's local storage, kept for 60 days.
+- **Ask the trainer:** type a quick question, like "should I lean forward or back on incline curls?", and get a short gut-check answer without leaving the app. Tap 💬 at the top to jump there, or **Ask about form** under any exercise. Today's workout, aim, trainer and gym go with the question so the answer fits your plan, and you can ask follow-ups. For anything bigger, it suggests a YouTube search for a form video. The chat starts over each day, or after 10 questions.
+- **No accounts.** Your settings, locked-in days and today's questions are stored only in your browser's local storage. Locked-in days are kept for 60 days.
+
+## Ask the trainer (optional)
+
+Answers come from Claude Sonnet 5.5, a balance of speed, quality and cost. The app sends your question and today's workout straight from your phone to the Anthropic API using your own API key. There's no GymBot server.
+
+To use it, get an API key from [console.anthropic.com](https://console.anthropic.com), add some credit, and enter the key in Settings (⚙︎). If CookBot runs on the same site and already has a key, Settings offers to reuse it. A question costs roughly a penny, so 100 questions a month is under a dollar. Without a key, the rest of the app works as normal and offline; asking needs a connection.
 
 ## Running it
 
@@ -69,7 +76,9 @@ python3 -m http.server 8000
 | `app.js` | Lock in, the week strip, checking off exercises, local storage |
 | `workouts.js` | The split, body-part workouts, exercise choices, time-of-day windows and aims |
 | `trainers.js` | The AI Trainer profiles: bodybuilder, powerlifter, marathon, weight loss and GLP-1 |
+| `ask.js` | Ask the trainer (Claude API call) |
 | `day.js` | The 3am day boundary |
 | `sw.js`, `manifest.webmanifest` | Offline caching and home-screen install |
+| `vendor/anthropic-sdk-0.131.0.js` | The Anthropic TypeScript SDK (MIT License), bundled into one file, the same as CookBot's |
 
 Tests for the schedule, body-part workouts, trainers, time of day, aims and gym equipment: `node --test`

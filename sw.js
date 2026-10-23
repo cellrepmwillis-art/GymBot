@@ -1,6 +1,6 @@
-// Caches the app so it opens instantly and works offline. Nothing in the app
-// needs a connection.
-const CACHE = "gymbot-v3";
+// Caches the app so it opens instantly and works offline. Only Ask the
+// trainer needs a connection.
+const CACHE = "gymbot-v4";
 const SHELL = [
   "./",
   "index.html",
@@ -9,6 +9,8 @@ const SHELL = [
   "day.js",
   "workouts.js",
   "trainers.js",
+  "ask.js",
+  "vendor/anthropic-sdk-0.131.0.js",
   "manifest.webmanifest",
   "icon.svg",
 ];
@@ -32,7 +34,7 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
-  if (request.method !== "GET") return;
+  if (request.method !== "GET") return; // API calls are POSTs and always go to the network
   if (new URL(request.url).origin === self.location.origin) {
     // Network first for our own files so updates show up; fall back to cache offline.
     event.respondWith(

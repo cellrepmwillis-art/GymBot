@@ -13,7 +13,10 @@
 <body>
   <header class="top">
     <h1>GymBot</h1>
-    <button id="open-settings" class="icon-btn" aria-label="Settings">⚙︎</button>
+    <div class="top-actions">
+      <button id="open-ask" class="icon-btn" aria-label="Ask the trainer">💬</button>
+      <button id="open-settings" class="icon-btn" aria-label="Settings">⚙︎</button>
+    </div>
   </header>
 
   <main>
@@ -53,6 +56,23 @@
         <button id="shuffle" type="button">Different exercises</button>
       </div>
       <p id="plan-sources" class="muted small sources"></p>
+    </section>
+
+    <section class="card" id="ask-card">
+      <h2>Ask the trainer</h2>
+      <ol id="chat" class="chat" aria-live="polite"></ol>
+      <form id="ask-form" class="ask">
+        <label class="search">
+          <span class="visually-hidden">Your question</span>
+          <input id="ask-input" type="text" placeholder="e.g. Lean forward or back on incline curls?" autocomplete="off" enterkeyhint="send">
+        </label>
+        <button id="ask-btn" class="primary" type="submit">Ask</button>
+      </form>
+      <p id="ask-status" class="status small" role="status"></p>
+      <div class="ask-foot">
+        <span id="ask-note" class="muted small"></span>
+        <button id="ask-clear" class="link-btn small" type="button" hidden>New chat</button>
+      </div>
     </section>
   </main>
 
@@ -96,6 +116,18 @@
           not a live AI. It isn't medical advice.
         </p>
       </fieldset>
+      <label class="field">
+        <span>Anthropic API key (optional, only for Ask the trainer)</span>
+        <input id="key-input" type="password" autocomplete="off" placeholder="sk-ant-...">
+      </label>
+      <p class="muted small" id="cookbot-key" hidden>
+        CookBot on this site already has a key.
+        <button type="button" class="link-btn" id="use-cookbot-key">Use the same key</button>
+      </p>
+      <p class="muted small">
+        Ask the trainer sends your question and today's workout to the Anthropic API (Claude Sonnet 5.5) using your own key
+        from console.anthropic.com. A question costs about a penny. Everything else in GymBot is free and works offline.
+      </p>
       <p class="muted small">
         The week is push, pull, legs, twice, Monday to Saturday, with Sunday off. The time of day decides how long the
         session is and how busy the gym is likely to be. A workout after midnight counts toward the day before, until 3am.

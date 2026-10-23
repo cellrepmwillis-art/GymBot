@@ -176,3 +176,31 @@ dialog::backdrop { background: rgb(0 0 0 / 0.5); }
 .sources { margin-top: 14px; }
 .profile select { margin-bottom: 0; }
 .now-head > div, .plan-head > div { min-width: 0; flex: 1 1 200px; }
+
+.search input {
+  font: inherit;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 2px solid var(--accent);
+  background: var(--bg);
+  color: var(--text);
+}
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.link-btn { border: none; background: none; color: var(--accent); padding: 0; cursor: pointer; font: inherit; }
+.ask { display: flex; gap: 8px; margin-top: 10px; }
+.ask .search { flex: 1; min-width: 0; }
+.ask .primary { flex: none; padding: 0 18px; border-radius: 12px; }
+.ask .primary:disabled { opacity: 0.6; }
+.status { margin: 8px 0 0; min-height: 1.2em; }
+.status.error { color: #dc2626; }
+.ask-foot { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ask-foot .link-btn[hidden] { display: none; }
+.chat { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.chat:empty { display: none; }
+.chat li { padding: 10px 12px; border-radius: 14px; white-space: pre-wrap; max-width: 90%; }
+.chat .q { justify-self: end; background: var(--accent); color: var(--accent-text); border-bottom-right-radius: 4px; }
+.chat .a { justify-self: start; background: var(--bg); border-bottom-left-radius: 4px; }
+.ask-about { font-size: 0.85rem; }
+dialog input[type="password"] { font: inherit; width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+.top-actions { display: flex; gap: 8px; }
