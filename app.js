@@ -2,7 +2,7 @@ import { dayKey, previousDay } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned } from "./workouts.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 4:00 AM";
+const VERSION = "2026-10-24 · 5:00 AM";
 const STORAGE_KEY = "gymbot";
 const KEEP_DAYS = 60;
 // Weight used for calories burned until one is entered.
@@ -102,6 +102,20 @@ function displayName(w) {
 function displayDetail(w) {
   const emphasis = isSplitDay(w) ? w.focus.match(/\((.*)\)$/)?.[1] : w.focus;
   return emphasis ? emphasis[0].toUpperCase() + emphasis.slice(1) : "";
+}
+
+// "See example": a YouTube search for the exercise done with good form. It
+// opens in the YouTube app on phones that have it.
+function exampleLink(name) {
+  const link = document.createElement("a");
+  link.className = "example";
+  link.href = `https://www.youtube.com/results?search_query=${encodeURIComponent(`how to do ${name} proper form`)}`;
+  link.target = "_blank";
+  link.rel = "noopener";
+  link.textContent = "▶ See example";
+  // Following the link shouldn't also lock the exercise.
+  link.addEventListener("click", (event) => event.stopPropagation());
+  return link;
 }
 
 // A padlock, open or shut.
@@ -350,19 +364,10 @@ function renderWorkout() {
       const pair = w.superset && !item.main && item.superset ? `Superset ${Math.floor((lifts - 2) / 2) + 2}${item.superset}` : null;
       const rest = item.superset === "A" ? "no rest, go straight to B" : `rest ${item.rest}`;
       detail.textContent = [item.main ? "Main lift" : pair, rest, item.alternative ? `Taken? ${item.alternative}` : null].filter(Boolean).join(" · ");
-      const ask = document.createElement("button");
-      ask.type = "button";
-      ask.className = "link-btn ask-about";
-      ask.textContent = "Ask about form";
-      ask.addEventListener("click", (event) => {
-        event.stopPropagation();
-        $("ask-input").value = `Quick form check on ${item.name.toLowerCase()}: what should I focus on?`;
-        $("ask-card").scrollIntoView({ behavior: "smooth", block: "start" });
-        $("ask-input").focus({ preventScroll: true });
-      });
-      detail.append(" ", ask);
+      detail.append(" ", exampleLink(item.name));
     } else {
       detail.textContent = item.text ?? "";
+      if (item.kind === "stretch") detail.append(" ", exampleLink(item.name));
     }
     if (detail.textContent) body.append(detail);
 
