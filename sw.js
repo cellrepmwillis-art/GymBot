@@ -1,6 +1,6 @@
 // Caches the app so it opens instantly and works offline. Only Ask the
 // trainer needs a connection.
-const CACHE = "gymbot-v7";
+const CACHE = "gymbot-v8";
 const SHELL = [
   "./",
   "index.html",
@@ -14,6 +14,9 @@ const SHELL = [
   "vendor/anthropic-sdk-0.131.0.js",
   "manifest.webmanifest",
   "icon.svg",
+  "icon-192.png",
+  "icon-512.png",
+  "icon-maskable-512.png",
 ];
 
 self.addEventListener("install", (event) => {

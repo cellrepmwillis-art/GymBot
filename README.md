@@ -82,7 +82,7 @@ python3 -m http.server 8000
 | `ask.js` | Ask the trainer (Claude API call) |
 | `met.js` | Calories burned: effort levels and the formula |
 | `day.js` | The 3am day boundary |
-| `sw.js`, `manifest.webmanifest` | Offline caching and home-screen install |
+| `sw.js`, `manifest.webmanifest`, `icon*.png`, `icon.svg` | Offline caching, home-screen install and the app icon |
 | `vendor/anthropic-sdk-0.131.0.js` | The Anthropic TypeScript SDK (MIT License), bundled into one file, the same as CookBot's |
 
 Tests for the schedule, body-part workouts, trainers, calories burned, time of day, aims and gym equipment: `node --test`
