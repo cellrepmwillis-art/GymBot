@@ -92,6 +92,24 @@
       <p id="streak-line" class="streak-line"></p>
     </section>
 
+    <section class="card" id="weight-card">
+      <h2>Lock-In Weight</h2>
+      <form id="weigh-form" class="weigh">
+        <label class="search">
+          <span class="visually-hidden">Today's weight in pounds</span>
+          <input id="weigh-input" type="number" min="50" max="700" step="any" inputmode="decimal" placeholder="Today's weight (lb)">
+        </label>
+        <button class="primary" type="submit">Log</button>
+      </form>
+      <p id="weigh-summary" class="muted small weigh-summary"></p>
+      <div id="weigh-verdict" class="verdict" hidden>
+        <span id="weigh-label" class="chip"></span>
+        <p id="weigh-headline" class="verdict-headline"></p>
+        <p id="weigh-detail" class="muted small"></p>
+      </div>
+      <button id="weigh-reset" class="link-btn small" type="button" hidden>Start over from today's weight</button>
+    </section>
+
     <div class="dock">
       <button id="lock-in" class="primary lock" type="button">
         <span class="lock-icon" aria-hidden="true"></span>

@@ -1,9 +1,10 @@
 import { dayKey, previousDay, nextReset } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned } from "./workouts.js";
 import { celebrate, streak, level } from "./celebrate.js";
+import { analyzeWeight, daysBetween } from "./weight.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 11:00 AM";
+const VERSION = "2026-10-24 · 12:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -35,12 +36,16 @@ function load() {
   // questions, { day, history, shown: [{ q, a }], context }, where history is
   // the conversation as sent to the API and context the last workout
   // description sent with a question.
+  // weighIns: [{ day, lb }] from Lock-In Weight, one a day, oldest first.
+  // weightStart: { day, lb } the weigh-ins are compared with. weightSetDay:
+  // the day the weight in Settings was last changed.
   // achievements: { completeDays, fullWeeks, weeks: [week ids] }, the totals
   // behind the milestones (see celebrate.js). A lock's `complete` says every
   // item that day is locked, `celebrated` that the celebration was shown.
   const defaults = {
     aim: "maintain", gym: "pf", trainer: "none", shotDay: "", restDay: 0, restAck: null, weightLb: null,
     locked: {}, focus: null, apiKey: "", chat: null, achievements: { completeDays: 0, fullWeeks: 0, weeks: [] },
+    weighIns: [], weightStart: null, weightSetDay: null,
   };
   try {
     const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -239,9 +244,70 @@ function renderOptions() {
   const rank = level(state.achievements.fullWeeks);
   $("streak-line").textContent = [run >= 2 ? `🔥 ${run}-day streak` : null, rank ? `🏆 ${rank}` : null].filter(Boolean).join(" · ");
 
+  renderWeight();
+
   const lock = state.locked[todayKey];
   $("lock-in-label").textContent = lock?.done?.length ? "Lock back in" : "Lock in";
 }
+
+// ---- Lock-In Weight ----
+
+const shortDate = (key) => {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString([], { month: "short", day: "numeric" });
+};
+
+function renderWeight() {
+  const latest = state.weighIns.at(-1) ?? null;
+  const start = state.weightStart;
+  $("weigh-input").placeholder = latest?.day === dayKey() ? `Logged ${latest.lb} lb today` : "Today's weight (lb)";
+  if (!start || !latest) {
+    $("weigh-summary").textContent = "Log your weight once or twice a week, at the same time of day, to see how it's moving against your aim.";
+    $("weigh-verdict").hidden = true;
+    $("weigh-reset").hidden = true;
+    return;
+  }
+  const result = start.day === latest.day ? null : analyzeWeight({ start, latest, aim: state.aim, trainer: state.trainer });
+  const weeks = Math.round(daysBetween(start.day, latest.day) / 7);
+  const change = latest.lb - start.lb;
+  const moved = change === 0 ? "no change" : `${change < 0 ? "down" : "up"} ${Math.abs(change).toFixed(1)} lb`;
+  $("weigh-summary").textContent = start.day === latest.day
+    ? `Starting at ${start.lb} lb on ${shortDate(start.day)}. Log again next week to see the trend.`
+    : `Started at ${start.lb} lb on ${shortDate(start.day)} · now ${latest.lb} lb · ${moved}${weeks >= 1 ? ` in ${weeks} ${weeks === 1 ? "week" : "weeks"}` : ""}`;
+  $("weigh-verdict").hidden = !result;
+  $("weigh-reset").hidden = start.day === latest.day;
+  if (!result) return;
+  $("weigh-verdict").dataset.tone = result.tone;
+  $("weigh-label").textContent = result.label;
+  $("weigh-headline").textContent = result.headline;
+  $("weigh-detail").textContent = result.detail;
+}
+
+$("weigh-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const lb = Math.round(Number($("weigh-input").value) * 10) / 10;
+  if (!(lb >= 50 && lb <= 700)) return;
+  const today = dayKey();
+  // The starting point: the weight from Settings, from the day it was set,
+  // or else this first weigh-in.
+  if (!state.weightStart) {
+    state.weightStart = state.weightLb > 0 ? { day: state.weightSetDay ?? today, lb: state.weightLb } : { day: today, lb };
+  }
+  state.weighIns = [...state.weighIns.filter((w) => w.day !== today), { day: today, lb }].slice(-400);
+  // The latest weight is also what calories burned use.
+  state.weightLb = lb;
+  $("weigh-input").value = "";
+  save();
+  renderOptions();
+});
+
+$("weigh-reset").addEventListener("click", () => {
+  const latest = state.weighIns.at(-1);
+  if (!latest || !confirm(`Start over, comparing from now on with ${latest.lb} lb?`)) return;
+  state.weightStart = { ...latest };
+  save();
+  renderOptions();
+});
 
 // Settings on the options screen save as soon as they change.
 for (const [value, { label }] of Object.entries(TRAINERS)) $("trainer-input").add(new Option(label, value));
@@ -693,7 +759,9 @@ $("settings").addEventListener("close", () => {
   if ($("settings").returnValue !== "save") return;
   state.restDay = Number($("rest-input").value);
   const lb = Number($("weight-input").value);
-  state.weightLb = lb > 0 ? lb : null;
+  const weightLb = lb > 0 ? lb : null;
+  if (weightLb !== state.weightLb) state.weightSetDay = weightLb ? dayKey() : null;
+  state.weightLb = weightLb;
   state.apiKey = $("key-input").value.trim();
   save();
   render();

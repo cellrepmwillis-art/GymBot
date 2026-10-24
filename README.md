@@ -57,6 +57,15 @@ On the workout screen every part of the session (warm-up, run, each exercise, ca
   - 🔥 streaks of 3, 7, 14, 21, 30 days and on. Rest days are skipped, so they never break one.
   - 🔑 your first fully locked day, and ⭐ 10, 25, 50, 100 and more.
   The rest day gets a quieter "Recovery locked in" and doesn't count toward any of them. The options screen shows your current streak and Locksmith level under This week. Locked-in days are now kept for about a year so long streaks count.
+- **Lock-In Weight:** on the options screen, under This week. Log your weight (once or twice a week, at the same time of day, works best) and GymBot compares it with your starting weight: the weight in Settings, from the day you set it, or your first weigh-in. It judges the pace as a share of body weight a week, against your aim:
+
+  | Aim | On track | Heads up / stalling | Off track |
+  |-----|----------|---------------------|-----------|
+  | Cut | Losing 0.25–1% a week | Losing faster than 1% a week (muscle loss risk), or flat | Going up: "Lock back in, champ." |
+  | Maintain | Within 0.25% a week either way | Drifting up or down (unexpected) | |
+  | Gain | Gaining 0.125–0.5% a week | Gaining faster than 0.5% (more fat than muscle), or flat | Losing |
+
+  Nothing is judged until a week has passed, since weight swings a few pounds day to day. With the GLP-1 trainer, fast loss gets a note that it's common early on, with protein and lifting reminders. Each weigh-in also becomes the weight used for calories burned. "Start over from today's weight" resets the starting point.
 - **Calories burned:** each part of the workout has an effort level (MET) from the Compendium of Physical Activities, for example 3.5 for lifting, 4.3 for circuits, 5.3 for an incline treadmill walk and 8.3 for an easy run. Calories = MET × your weight in kg × hours, counted only for the parts you've locked. Your weight comes from Settings, or from CookBot's profile if CookBot runs on the same site; until then it uses 170 lb. These are estimates, and real burn varies from person to person. The week strip on the options screen shows each day's calories and the week's total.
 - **Ask the trainer:** type a quick question, like "should I lean forward or back on incline curls?", and get a short gut-check answer without leaving the app. It's on the workout screen; tap 💬 at the top to jump there. Today's workout, aim, trainer and gym go with the question so the answer fits your plan, and you can ask follow-ups. For anything bigger, it suggests a YouTube search for a form video. The chat starts over each day, or after 10 questions.
 - **No accounts.** Your settings, locked-in days and today's questions are stored only in your browser's local storage. Locked-in days are kept for about a year.
@@ -92,8 +101,9 @@ python3 -m http.server 8000
 | `ask.js` | Ask the trainer (Claude API call) |
 | `met.js` | Calories burned: effort levels and the formula |
 | `celebrate.js` | The end-of-day celebration, streaks and Locksmith levels |
+| `weight.js` | Lock-In Weight: whether weight is moving the right way for the aim |
 | `day.js` | The midnight day boundary |
 | `sw.js`, `manifest.webmanifest`, `icon*.png`, `icon.svg` | Offline caching, home-screen install and the app icon |
 | `vendor/anthropic-sdk-0.131.0.js` | The Anthropic TypeScript SDK (MIT License), bundled into one file, the same as CookBot's |
 
-Tests for the schedule, body-part workouts, trainers, calories burned, celebrations, time of day, aims and gym equipment: `node --test`
+Tests for the schedule, body-part workouts, trainers, calories burned, celebrations, weight trends, time of day, aims and gym equipment: `node --test`
