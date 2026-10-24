@@ -220,14 +220,18 @@
   <dialog id="session-dialog" aria-labelledby="session-dialog-title">
     <h2 id="session-dialog-title">Add a session</h2>
     <p id="session-dialog-text" class="muted"></p>
-    <div class="session-choices">
-      <button id="session-cardio" type="button">Cardio session</button>
+    <div class="session-choices" id="session-choices">
+      <div class="session-cardio">
+        <button id="session-cardio" type="button">Cardio session</button>
+        <p id="session-cardio-note" class="muted small" hidden>Today's recommended cardio is done.</p>
+      </div>
       <div class="session-strength">
         <label class="field">
           <span>Strength session for</span>
           <select id="session-focus"></select>
         </label>
         <button id="session-strength" type="button">Strength session</button>
+        <p id="session-strength-note" class="muted small" hidden>Today's recommended strength sessions are done.</p>
       </div>
     </div>
     <div class="row">

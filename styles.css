@@ -366,3 +366,8 @@ main[hidden], .dock[hidden] { display: none; }
 .session-strength { display: grid; gap: 8px; padding: 10px; border-radius: 12px; background: var(--bg); }
 .session-strength .field { margin: 0; }
 #session-dialog .row { margin-top: 0; }
+.session-cardio { display: grid; gap: 4px; }
+.session-cardio button { width: 100%; }
+.session-choices.strength-first .session-strength { order: -1; }
+.session-choices p { margin: 0; text-align: center; }
+.session-choices p[hidden] { display: none; }

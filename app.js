@@ -4,7 +4,7 @@ import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weekly
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-25 · 4:00 AM";
+const VERSION = "2026-10-25 · 5:00 AM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -718,20 +718,36 @@ $("add-session").addEventListener("click", () => {
   const used = sessionCounts(day);
   const cardioLeft = limits.cardio - used.cardio;
   const strengthLeft = limits.strength - used.strength;
-  if (used.total >= limits.total || (cardioLeft <= 0 && strengthLeft <= 0)) {
+  // The total is firm; the split between cardio and strength is only a
+  // recommendation, so a kind that's used up can still be picked, after a
+  // question.
+  if (used.total >= limits.total) {
     toast(HERCULES);
     return;
   }
   $("session-dialog-text").textContent = `Session ${used.total + 1} of up to ${limits.total} today.`;
-  $("session-cardio").disabled = cardioLeft <= 0;
-  $("session-cardio").textContent = cardioLeft > 0 ? "Cardio session" : "Cardio session (done for today)";
-  $("session-strength").disabled = strengthLeft <= 0;
-  $("session-strength").textContent = strengthLeft > 0 ? "Strength session" : "Strength session (done for today)";
-  $("session-focus").disabled = strengthLeft <= 0;
+  $("session-cardio").textContent = cardioLeft > 0 ? "Cardio session" : "Cardio session anyway";
+  $("session-cardio-note").hidden = cardioLeft > 0;
+  $("session-strength").textContent = strengthLeft > 0 ? "Strength session" : "Strength session anyway";
+  $("session-strength-note").hidden = strengthLeft > 0;
+  // The recommended kind goes first, highlighted.
+  const strengthFirst = cardioLeft <= 0 && strengthLeft > 0;
+  $("session-choices").classList.toggle("strength-first", strengthFirst);
+  $("session-cardio").classList.toggle("primary", cardioLeft > 0);
+  $("session-strength").classList.toggle("primary", strengthFirst);
+  $("session-dialog").dataset.cardioLeft = String(cardioLeft);
+  $("session-dialog").dataset.strengthLeft = String(strengthLeft);
   $("session-dialog").showModal();
 });
 
 function addSession(kind) {
+  const left = Number($("session-dialog").dataset[`${kind}Left`]);
+  if (left <= 0) {
+    const ask = kind === "strength"
+      ? "Today already covers your recommended strength training, and the next suggested session is cardio. Do another strength session anyway?"
+      : "Today already covers your recommended cardio, and the next suggested session is strength. Do another cardio session anyway?";
+    if (!confirm(ask)) return;
+  }
   $("session-dialog").close();
   const day = state.locked[currentDay()];
   if (!day) return;
