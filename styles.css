@@ -324,3 +324,10 @@ main[hidden], .dock[hidden] { display: none; }
 .rest-up[hidden], #progress[hidden], #lock-hint[hidden], .chip[hidden] { display: none; }
 .rest-up-title { font-size: 1.4rem; font-weight: 700; margin: 0 0 6px; }
 .rest-up .muted { margin: 0; }
+.week li.editable { cursor: pointer; }
+.week li.editable:hover, .week li.editable:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.rest-week { margin: 0; }
+.rest-week-hint { margin: 6px 0 20px; }
+.edit-banner { margin: 0; padding: 10px 14px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.edit-banner[hidden], #ask-card[hidden] { display: none; }
+.week-hint { margin: 8px 0 0; }

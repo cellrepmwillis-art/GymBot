@@ -30,6 +30,8 @@
         <footer id="rest-cite"></footer>
       </blockquote>
       <p id="rest-bye" class="muted rest-bye" hidden>Enjoy the rest. You can close the app whenever you're ready.</p>
+      <ol id="rest-week" class="week rest-week" aria-label="This week: tap an earlier day to edit it"></ol>
+      <p class="muted small rest-week-hint">Tap an earlier day to edit it.</p>
       <div class="rest-actions">
         <button id="rest-exit" type="button">Exit</button>
         <button id="rest-anyway" class="primary" type="button">Lock in anyway</button>
@@ -88,10 +90,11 @@
 
     <section class="card">
       <h2>This week</h2>
-      <ol id="week" class="week" aria-label="This week"></ol>
+      <ol id="week" class="week" aria-label="This week: tap an earlier day to edit it"></ol>
       <p id="week-total" class="muted small"></p>
       <p id="week-goals" class="muted small week-goals"></p>
       <p id="streak-line" class="streak-line"></p>
+      <p class="muted small week-hint">Tap an earlier day to edit it.</p>
     </section>
 
     <section class="card" id="weight-card">
@@ -128,6 +131,7 @@
 
   <!-- The workout: what you see after Lock in, until Lock out. -->
   <main id="workout-screen" hidden>
+    <p id="edit-banner" class="edit-banner" hidden></p>
     <section class="card">
       <div class="plan-head">
         <div>
@@ -184,7 +188,7 @@
 
     <button id="lock-out" class="lock lock-out" type="button">
       <span class="lock-icon open" aria-hidden="true"></span>
-      <span>Lock out</span>
+      <span id="lock-out-label">Lock out</span>
     </button>
   </main>
 
