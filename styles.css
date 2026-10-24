@@ -373,3 +373,6 @@ main[hidden], .dock[hidden] { display: none; }
 .session-choices p[hidden] { display: none; }
 .height-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .height-fields .field { margin-bottom: 4px; }
+.edit-routine { display: block; margin-top: 12px; font-weight: 600; }
+.edit-routine[hidden] { display: none; }
+#routine-dialog select { margin-bottom: 0; }

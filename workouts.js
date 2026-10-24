@@ -222,9 +222,51 @@ export const TARGETS = {
       [E("Side plank", "30 sec each side"), E("Dumbbell side bend"), E("Cable side bend")],
     ],
   },
+  // One exercise for each major area. Best 2–3 days a week with a day off
+  // between, so the same muscles get about 48 hours to recover (ACSM).
+  fullBody: {
+    title: "Full body",
+    focus: "Legs, chest, back, hips, shoulders and core",
+    slots: [
+      [B("Barbell back squat"), E("Smith machine squat"), E("Leg press"), E("Goblet squat")],
+      [B("Barbell bench press"), E("Smith machine bench press"), E("Dumbbell bench press"), E("Chest press machine")],
+      [E("Lat pulldown"), E("Seated cable row"), E("Single-arm dumbbell row")],
+      [B("Barbell Romanian deadlift"), E("Smith machine Romanian deadlift"), E("Dumbbell Romanian deadlift"), E("Lying leg curl")],
+      [E("Seated dumbbell shoulder press"), E("Shoulder press machine"), E("Cable lateral raise")],
+      [E("Plank", "30–60 sec"), E("Cable crunch"), E("Dead bug")],
+    ],
+  },
 };
 
-export const TARGET_LABELS = { chest: "Chest", back: "Back", shoulders: "Shoulders", biceps: "Biceps", triceps: "Triceps", legs: "Legs", abs: "Abs" };
+export const TARGET_LABELS = { chest: "Chest", back: "Back", shoulders: "Shoulders", biceps: "Biceps", triceps: "Triceps", legs: "Legs", abs: "Abs", fullBody: "Full body" };
+
+// ---- My routine ----
+
+// Cardio for "My routine", by key: what it's called, what to do for
+// `minutes`, its MET and whether it's done outdoors (for the Outdoors & home
+// gym) or at a gym.
+export const ROUTINE_CARDIO = {
+  // 12-3-30: treadmill at a 12% incline and 3 mph. The ACSM walking equation
+  // puts that at about 8.3 METs, vigorous.
+  "12-3-30": { label: "12-3-30 (treadmill, 12% incline, 3 mph)", text: (m) => `12-3-30 for ${m} min: treadmill at a 12% incline and 3 mph. Hold the rails only for balance.`, met: 8.3, place: "gym" },
+  inclineWalk: { label: "Incline treadmill walk", text: (m) => `${m} min incline treadmill walk (10–12% incline, about 3 mph).`, met: MET.inclineWalk, place: "gym" },
+  stairs: { label: "StairMaster", text: (m) => `${m} min on the StairMaster at a steady pace.`, met: 9.0, place: "gym" },
+  elliptical: { label: "Elliptical", text: (m) => `${m} min on the elliptical at a pace that's hard but lets you talk.`, met: MET.moderateMachine, place: "gym" },
+  bike: { label: "Stationary bike", text: (m) => `${m} min on the bike at a pace that's hard but lets you talk.`, met: 6.8, place: "gym" },
+  rower: { label: "Rowing machine", text: (m) => `${m} min on the rower at a steady pace.`, met: 7.0, place: "gym" },
+  run: { label: "Easy run", text: (m) => `${m} min easy run, at a pace you could talk at.`, met: MET.easyRun, place: "both" },
+  walk: { label: "Brisk walk", text: (m) => `${m} min brisk walk at the park or around the track.`, met: MET.briskWalk, place: "both" },
+  hike: { label: "Hilly walk or hike", text: (m) => `${m} min walk with hills, at a pace where talking takes some effort.`, met: 6.0, place: "outdoor" },
+};
+
+// The body parts "One body part a day" goes through, one per training day.
+export const ROUTINE_ROTATION = ["chest", "back", "legs", "shoulders", "biceps", "triceps"];
+
+export const ROUTINE_STRENGTH = {
+  rotate: "One body part a day (chest, back, legs, shoulders, biceps, triceps)",
+  fullBody: "Full body every other day (3 days a week, the recommended most)",
+  none: "No lifting, just the cardio",
+};
 
 // The training week by position: 0 is the rest day (Sunday by default), and
 // the six days after it run the split twice, so with Sunday off, Monday is
@@ -448,7 +490,45 @@ const MAX_CHOICES = 3;
 // instead of today's split. `trainer` is a key of TRAINERS, and `shotDay` the
 // weekday (Sunday is 0) of a weekly GLP-1 shot. `restDay` is the weekday off;
 // on it, without a target, this returns a rest day.
-export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, swaps = {}, mode = null, target = null, trainer = "none", shotDay = null, restDay = 0, extra = false } = {}) {
+// "My routine": a person's own day, made of their cardio and their choice of
+// lifting, as one session. `routine` is { cardio, minutes, strength } (keys
+// of ROUTINE_CARDIO and ROUTINE_STRENGTH). It applies on training days when
+// no body part is picked and no override is on; the rest day stays a rest
+// day.
+export function suggest(args = {}) {
+  const { routine, target, mode, extra, date = new Date(), restDay = 0, gym = "pf" } = args;
+  let cardio = routine && ROUTINE_CARDIO[routine.cardio];
+  // Cardio that doesn't fit the gym gives way: a treadmill outdoors becomes
+  // a brisk walk, a hike at the gym an incline walk.
+  if (cardio?.place === "gym" && gym === "outdoor") cardio = ROUTINE_CARDIO.walk;
+  if (cardio?.place === "outdoor" && gym !== "outdoor") cardio = ROUTINE_CARDIO.inclineWalk;
+  const position = weekPosition(gymDay(date), Number(restDay) || 0);
+  if (!cardio || target || mode || extra || position === 0) return suggestDay(args);
+  const minutes = Number(routine.minutes) || 30;
+  const lifting = routine.strength === "fullBody" ? (position % 2 === 1 ? "fullBody" : null)
+    : routine.strength === "none" ? null
+    : ROUTINE_ROTATION[(position - 1) % ROUTINE_ROTATION.length];
+  const w = suggestDay({ ...args, target: lifting, mode: lifting ? null : "cardio" });
+  // The routine's cardio replaces the plan's.
+  const cardioItem = w.items.find((item) => item.kind === "cardio" || item.kind === "run");
+  const text = cardio.text(minutes);
+  if (cardioItem) Object.assign(cardioItem, { id: "cardio", kind: "cardio", name: "Cardio", text, minutes, met: cardio.met });
+  else w.items.push({ id: "cardio", kind: "cardio", name: "Cardio", text, minutes, met: cardio.met });
+  const lifted = w.items.filter((item) => item.kind === "lift").reduce((sum, item) => sum + item.minutes, 0);
+  const short = cardio.label.split(" (")[0];
+  return {
+    ...w,
+    routine: true,
+    mode: null,
+    run: null,
+    cardio: text,
+    title: lifting ? `${TARGET_LABELS[lifting]} + ${short}` : short,
+    focus: lifting ? "My routine" : "My routine · cardio day",
+    minutes: Math.round((5 + lifted + minutes) / 5) * 5,
+  };
+}
+
+function suggestDay({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, swaps = {}, mode = null, target = null, trainer = "none", shotDay = null, restDay = 0, extra = false } = {}) {
   const plan = AIMS[aim] ? aim : "maintain";
   const coachKey = TRAINERS[trainer] ? trainer : "none";
   const coach = TRAINERS[coachKey];

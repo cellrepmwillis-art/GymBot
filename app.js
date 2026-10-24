@@ -1,11 +1,11 @@
 import { dayKey, previousDay, nextReset } from "./day.js";
-import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned, sessionLimits } from "./workouts.js";
+import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned, sessionLimits, ROUTINE_CARDIO, ROUTINE_STRENGTH } from "./workouts.js";
 import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weeklyBadges, trainingWeek, weekDays, CARDIO_GOAL, STRENGTH_DAYS } from "./celebrate.js";
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-25 · 10:00 AM";
+const VERSION = "2026-10-25 · 11:00 AM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -37,6 +37,9 @@ function load() {
   // was tapped on the rest day, so the reminder shows once.
   // weightLb: for calories burned and the protein target, or null.
   // heightIn: for the protein target, or null.
+  // routine: "My routine", { cardio, minutes, strength }, and useRoutine
+  // whether it's the plan (until Default is picked). A lock's `routine` is
+  // the routine it was locked in with.
   // apiKey: the person's Anthropic API key, for Ask the trainer. chat: today's
   // questions, { day, history, shown: [{ q, a }], context }, where history is
   // the conversation as sent to the API and context the last workout
@@ -52,7 +55,7 @@ function load() {
   const defaults = {
     aim: "maintain", gym: "pf", trainer: "none", shotDay: "", restDay: 0, restAck: null, weightLb: null,
     locked: {}, focus: null, apiKey: "", chat: null, achievements: { completeDays: 0, fullWeeks: 0, weeks: [] },
-    weighIns: [], weightStart: null, weightSetDay: null, heightIn: null,
+    weighIns: [], weightStart: null, weightSetDay: null, heightIn: null, routine: null, useRoutine: false,
   };
   try {
     const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -109,8 +112,11 @@ const height = () => (state.heightIn > 0 ? state.heightIn : null);
 const todaysTarget = () => (state.focus?.day === dayKey() && TARGETS[state.focus.target] ? state.focus.target : null);
 
 // The workout for `date` with the current settings.
-const workout = (date, target, shuffle = 0, swaps = {}, mode = null, extra = false) =>
-  suggest({ date, aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay, restDay: state.restDay, target, shuffle, swaps, mode, extra });
+const workout = (date, target, shuffle = 0, swaps = {}, mode = null, extra = false, routine = null) =>
+  suggest({ date, aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay, restDay: state.restDay, target, shuffle, swaps, mode, extra, routine });
+
+// My routine, while it's the plan.
+const activeRoutine = () => (state.useRoutine && state.routine ? state.routine : null);
 
 // An earlier day of this week opened from the week strip for editing, or
 // null for today. The workout screen works on currentDay().
@@ -131,7 +137,7 @@ function lockedWorkout() {
   const session = viewSession > 0 ? day.extra?.[viewSession - 1] : null;
   if (!session) {
     viewSession = 0;
-    return { lock: day, day, w: workout(timeOf(day, 10), day.focus, day.shuffle, day.swaps, day.mode) };
+    return { lock: day, day, w: workout(timeOf(day, 10), day.focus, day.shuffle, day.swaps, day.mode, false, day.routine) };
   }
   return { lock: session, day, w: workout(timeOf(session, 18), session.focus, 0, session.swaps, session.kind === "cardio" ? "cardio" : "strength", true) };
 }
@@ -157,6 +163,7 @@ const TRAINER_CHIPS = { bodybuilder: "Bodybuilder", powerlifter: "Powerlifter", 
 const isSplitDay = (w) => /^(Push|Pull|Legs) [AB]$/.test(w.title);
 
 function displayName(w) {
+  if (w.routine) return w.title;
   if (w.extra) return w.mode === "cardio" ? "Cardio session" : `${TARGET_LABELS[w.target] ?? "Strength"} session`;
   if (w.mode === "cardio") return "Cardio only";
   if (w.target) return `${TARGET_LABELS[w.target]} (selected)`;
@@ -164,6 +171,7 @@ function displayName(w) {
 }
 
 function displayDetail(w) {
+  if (w.routine) return w.focus;
   if (w.extra) return "Extra session";
   if (w.mode === "cardio") return "Override";
   const emphasis = isSplitDay(w) ? w.focus.match(/\((.*)\)$/)?.[1] : w.focus;
@@ -264,7 +272,8 @@ function toast(text) {
 // Open an earlier day of this week on the workout screen. A day that was
 // never locked in gets its plan as of 10am that day.
 function openDay(key) {
-  state.locked[key] ??= { at: dateOfKey(key).getTime(), focus: null, shuffle: 0, swaps: {}, done: [], burned: 0, active: false };
+  const routine = activeRoutine();
+  state.locked[key] ??= { at: dateOfKey(key).getTime(), focus: null, routine: routine ? { ...routine } : null, shuffle: 0, swaps: {}, done: [], burned: 0, active: false };
   viewDay = key;
   viewSession = 0;
   save();
@@ -294,7 +303,7 @@ function renderOptions() {
   $("aim-chip").textContent = coach ? `${aim} · ${coach}` : aim;
 
   const target = todaysTarget();
-  const today = workout(now, target);
+  const today = workout(now, target, 0, {}, null, false, activeRoutine());
   const todayLock = state.locked[dayKey(now)];
   $("now-split").textContent = todayLock?.unexpectedRest && todayLock.mode === "rest"
     ? `Today: unexpected rest day${target ? ` (${TARGET_LABELS[target]} if you work out anyway)` : ""}`
@@ -302,12 +311,19 @@ function renderOptions() {
     ? "Today: rest day · stretching only"
     : `Today: ${displayName(today)}`;
 
-  const focusChoices = [[null, "Default"], ...Object.entries(TARGET_LABELS)];
-  segmented($("focus"), focusChoices, target, (value) => {
-    state.focus = value ? { day: dayKey(), target: value } : null;
+  // Default and My routine last until changed; a body part is for today.
+  const focusChoices = [[null, "Default"], ["routine", "My routine"], ...Object.entries(TARGET_LABELS)];
+  segmented($("focus"), focusChoices, target ?? (activeRoutine() ? "routine" : null), (value) => {
+    if (value === "routine" && !state.routine) {
+      openRoutine();
+      return;
+    }
+    if (value === null || value === "routine") state.useRoutine = value === "routine";
+    state.focus = value && value !== "routine" ? { day: dayKey(), target: value } : null;
     save();
     renderOptions();
   });
+  $("edit-routine").hidden = !activeRoutine();
 
   segmented($("aim-choices"), Object.entries(AIMS).map(([value, { label }]) => [value, label]), state.aim, (value) => {
     state.aim = value;
@@ -350,6 +366,34 @@ function renderOptions() {
   // Unexpected rest days are for training days.
   $("rest-link").hidden = Boolean(lock?.unexpectedRest) || gymDay(now) === Number(state.restDay);
 }
+
+// ---- My routine ----
+
+function openRoutine() {
+  const outdoor = state.gym === "outdoor";
+  const cardio = $("routine-cardio");
+  cardio.replaceChildren(...Object.entries(ROUTINE_CARDIO)
+    .filter(([, c]) => c.place === "both" || c.place === (outdoor ? "outdoor" : "gym"))
+    .map(([key, c]) => new Option(c.label, key)));
+  const r = state.routine ?? { cardio: outdoor ? "walk" : "12-3-30", minutes: 45, strength: "rotate" };
+  cardio.value = r.cardio;
+  if (!cardio.value) cardio.selectedIndex = 0;
+  $("routine-minutes").value = String(r.minutes);
+  $("routine-strength").value = r.strength;
+  $("routine-dialog").showModal();
+}
+
+for (const [key, label] of Object.entries(ROUTINE_STRENGTH)) $("routine-strength").add(new Option(label, key));
+$("edit-routine").addEventListener("click", openRoutine);
+
+$("routine-dialog").addEventListener("close", () => {
+  if ($("routine-dialog").returnValue !== "save") return;
+  state.routine = { cardio: $("routine-cardio").value, minutes: Number($("routine-minutes").value), strength: $("routine-strength").value };
+  state.useRoutine = true;
+  state.focus = null;
+  save();
+  renderOptions();
+});
 
 // ---- Lock-In Weight ----
 
@@ -467,7 +511,8 @@ $("lock-in").addEventListener("click", () => {
   const today = dayKey();
   const previous = state.locked[today];
   const focus = todaysTarget();
-  const same = previous && (previous.focus ?? null) === focus;
+  const routine = focus ? null : activeRoutine();
+  const same = previous && (previous.focus ?? null) === focus && JSON.stringify(previous.routine ?? null) === JSON.stringify(routine);
   // An unexpected rest day stays one whatever the focus: "Back to my rest
   // day" goes back to it, and a focus picked meanwhile waits for "Work out
   // anyway".
@@ -477,6 +522,7 @@ $("lock-in").addEventListener("click", () => {
     focus,
     shuffle: same ? previous.shuffle ?? 0 : 0,
     mode: resting ? "rest" : same ? previous.mode ?? null : null,
+    routine: routine ? { ...routine } : null,
     extra: previous?.extra ?? [],
     total: previous?.total,
     celebrated: same ? previous.celebrated ?? false : false,

@@ -379,3 +379,45 @@ test("never more than five tips, and safety tips stay", () => {
     }
   }
 });
+
+test("my routine: 12-3-30 every training day plus one body part", () => {
+  const routine = { cardio: "12-3-30", minutes: 45, strength: "rotate" };
+  const week = [0, 1, 2, 3, 4, 5].map((d) => suggest({ date: at(d, 17), routine }));
+  assert.deepEqual(week.map((w) => w.title), ["Chest + 12-3-30", "Back + 12-3-30", "Legs + 12-3-30", "Shoulders + 12-3-30", "Biceps + 12-3-30", "Triceps + 12-3-30"]);
+  for (const w of week) {
+    assert.equal(w.routine, true);
+    const cardio = w.items.filter((i) => i.kind === "cardio");
+    assert.equal(cardio.length, 1);
+    assert.equal(cardio[0].minutes, 45);
+    assert.equal(cardio[0].met, 8.3);
+    assert.match(cardio[0].text, /^12-3-30 for 45 min: treadmill at a 12% incline and 3 mph/);
+    assert.ok(w.items.some((i) => i.kind === "lift"));
+  }
+  // The rest day stays a rest day, and a picked body part or override wins.
+  assert.equal(suggest({ date: at(6, 10), routine }).rest, true);
+  assert.equal(suggest({ date: at(0, 10), routine, target: "abs" }).title, "Ab day");
+  assert.equal(suggest({ date: at(0, 10), routine, mode: "cardio" }).routine, undefined);
+});
+
+test("my routine: full body every other day, cardio between", () => {
+  const routine = { cardio: "walk", minutes: 30, strength: "fullBody" };
+  const titles = [0, 1, 2, 3, 4, 5].map((d) => suggest({ date: at(d, 10), routine, gym: "outdoor" }).title);
+  assert.deepEqual(titles, ["Full body + Brisk walk", "Brisk walk", "Full body + Brisk walk", "Brisk walk", "Full body + Brisk walk", "Brisk walk"]);
+  const cardioDay = suggest({ date: at(1, 10), routine, gym: "outdoor" });
+  assert.deepEqual(cardioDay.items.map((i) => i.id), ["warmup", "cardio"]);
+  assert.equal(suggest({ date: at(0, 10), routine, gym: "outdoor" }).exercises[0].name, "Bodyweight squat");
+  // No lifting: just the cardio.
+  assert.deepEqual(suggest({ date: at(0, 10), routine: { cardio: "bike", minutes: 60, strength: "none" } }).items.map((i) => i.id), ["warmup", "cardio"]);
+});
+
+test("full body is a focus too", () => {
+  const w = suggest({ date: at(0, 10), target: "fullBody", gym: "af" });
+  assert.equal(w.title, "Full body");
+  assert.deepEqual(w.exercises.map((e) => e.name), ["Barbell back squat", "Barbell bench press", "Lat pulldown", "Barbell Romanian deadlift", "Seated dumbbell shoulder press", "Plank"]);
+});
+
+test("my routine's cardio fits the gym", () => {
+  const routine = { cardio: "12-3-30", minutes: 45, strength: "none" };
+  assert.match(suggest({ date: at(0, 10), routine, gym: "outdoor" }).cardio, /^45 min brisk walk/);
+  assert.match(suggest({ date: at(0, 10), routine: { ...routine, cardio: "hike" }, gym: "pf" }).cardio, /^45 min incline treadmill walk/);
+});
