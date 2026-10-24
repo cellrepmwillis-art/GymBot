@@ -263,3 +263,33 @@ main[hidden], .dock[hidden] { display: none; }
 .overrides { display: grid; gap: 8px; margin-top: 14px; }
 .overrides[hidden] { display: none; }
 .overrides button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+
+/* Celebration */
+.streak-line { margin: 6px 0 0; font-weight: 600; }
+.streak-line:empty { display: none; }
+.celebrate { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 16px; background: rgb(0 0 0 / 0.55); }
+.celebrate[hidden] { display: none; }
+.confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.celebrate-card {
+  position: relative;
+  width: min(420px, 100%);
+  background: var(--card);
+  color: var(--text);
+  border-radius: 20px;
+  padding: 28px 20px 20px;
+  text-align: center;
+  animation: pop 0.4s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.celebrate-lock { width: 88px; height: 88px; margin: 0 auto 10px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-text); }
+.celebrate-title { font-size: 1.8rem; margin: 0 0 8px; }
+.celebrate-card p { margin: 0 0 8px; }
+.celebrate-burned { font-weight: 700; color: var(--accent); }
+.celebrate-burned:empty { display: none; }
+.badges { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; text-align: left; }
+.badges:empty { display: none; }
+.badges li { display: grid; grid-template-columns: 32px 1fr; gap: 8px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--accent-soft); font-weight: 600; }
+.badge-icon { font-size: 1.4rem; text-align: center; }
+.celebrate-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
+.celebrate-actions button { padding: 14px; border-radius: 12px; font-size: 1.05rem; }
+@keyframes pop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .celebrate-card { animation: none; } }

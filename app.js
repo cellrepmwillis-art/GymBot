@@ -1,10 +1,12 @@
 import { dayKey, previousDay, nextReset } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned } from "./workouts.js";
+import { celebrate, streak, level } from "./celebrate.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 10:00 AM";
+const VERSION = "2026-10-24 · 11:00 AM";
 const STORAGE_KEY = "gymbot";
-const KEEP_DAYS = 60;
+// Locked-in days are kept about a year, for streaks.
+const KEEP_DAYS = 400;
 // Weight used for calories burned until one is entered.
 const DEFAULT_WEIGHT_LB = 170;
 
@@ -33,9 +35,12 @@ function load() {
   // questions, { day, history, shown: [{ q, a }], context }, where history is
   // the conversation as sent to the API and context the last workout
   // description sent with a question.
+  // achievements: { completeDays, fullWeeks, weeks: [week ids] }, the totals
+  // behind the milestones (see celebrate.js). A lock's `complete` says every
+  // item that day is locked, `celebrated` that the celebration was shown.
   const defaults = {
     aim: "maintain", gym: "pf", trainer: "none", shotDay: "", restDay: 0, restAck: null, weightLb: null,
-    locked: {}, focus: null, apiKey: "", chat: null,
+    locked: {}, focus: null, apiKey: "", chat: null, achievements: { completeDays: 0, fullWeeks: 0, weeks: [] },
   };
   try {
     const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -230,6 +235,9 @@ function renderOptions() {
   $("week-total").textContent = workouts
     ? `${workouts} ${workouts === 1 ? "workout" : "workouts"} · ${burned.toLocaleString()} cal burned this week`
     : "Nothing locked yet this week.";
+  const run = streak(state.locked, todayKey, Number(state.restDay));
+  const rank = level(state.achievements.fullWeeks);
+  $("streak-line").textContent = [run >= 2 ? `🔥 ${run}-day streak` : null, rank ? `🏆 ${rank}` : null].filter(Boolean).join(" · ");
 
   const lock = state.locked[todayKey];
   $("lock-in-label").textContent = lock?.done?.length ? "Lock back in" : "Lock in";
@@ -323,6 +331,8 @@ function renderWorkout() {
   const done = new Set(lock.done.filter((id) => ids.has(id)));
   const { lb, from } = weight();
   lock.burned = caloriesBurned(w.items, [...done], lb);
+  lock.complete = done.size === w.items.length;
+  lock.rest = w.rest;
   save();
 
   $("locked-count").textContent = `${done.size} of ${w.items.length} locked`;
@@ -402,6 +412,7 @@ function renderWorkout() {
       if (done.has(item.id)) done.delete(item.id); else done.add(item.id);
       lock.done = [...done];
       renderWorkout();
+      if (lock.complete && !lock.celebrated) celebrateToday(lock);
     });
     list.append(li);
   }
@@ -425,13 +436,88 @@ function setMode(mode) {
 $("cardio-only").addEventListener("click", () => setMode("cardio"));
 $("strength-only").addEventListener("click", () => setMode("strength"));
 
-$("lock-out").addEventListener("click", () => {
+function lockOut() {
   const lock = state.locked[dayKey()];
   if (lock) lock.active = false;
   save();
   render();
   window.scrollTo({ top: 0 });
+}
+$("lock-out").addEventListener("click", lockOut);
+
+// ---- Celebration ----
+
+// Shown once a day, when the last lock is locked.
+function celebrateToday(lock) {
+  lock.celebrated = true;
+  const { celebration, achievements } = celebrate({
+    locked: state.locked, today: dayKey(), restDay: Number(state.restDay), achievements: state.achievements, rest: lock.rest,
+  });
+  state.achievements = achievements;
+  save();
+  $("celebrate-title").textContent = celebration.title;
+  $("celebrate-line").textContent = celebration.line;
+  $("celebrate-burned").textContent = lock.burned ? `🔥 ${lock.burned.toLocaleString()} cal burned today` : "";
+  $("celebrate-badges").replaceChildren(...celebration.badges.map(({ icon, text }) => {
+    const li = document.createElement("li");
+    li.append(Object.assign(document.createElement("span"), { className: "badge-icon", textContent: icon }), text);
+    return li;
+  }));
+  $("celebrate").hidden = false;
+  $("celebrate-close").focus();
+  try { navigator.vibrate?.([80, 60, 80, 60, 160]); } catch {}
+  confetti($("confetti"));
+}
+
+function closeCelebration() {
+  $("celebrate").hidden = true;
+}
+$("celebrate-close").addEventListener("click", closeCelebration);
+$("celebrate-lock-out").addEventListener("click", () => {
+  closeCelebration();
+  lockOut();
 });
+
+// A few seconds of falling confetti in the theme's colors. Skipped for
+// people who ask for reduced motion.
+function confetti(canvas) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const ctx = canvas.getContext("2d");
+  const scale = devicePixelRatio || 1;
+  canvas.width = innerWidth * scale;
+  canvas.height = innerHeight * scale;
+  ctx.scale(scale, scale);
+  const colors = ["#f97316", "#c2410c", "#fbbf24", "#22c55e", "#3b82f6", "#ffedd5"];
+  const pieces = Array.from({ length: 140 }, () => ({
+    x: Math.random() * innerWidth,
+    y: -20 - Math.random() * innerHeight * 0.6,
+    w: 6 + Math.random() * 6,
+    h: 8 + Math.random() * 8,
+    speed: 2 + Math.random() * 3.5,
+    drift: (Math.random() - 0.5) * 1.5,
+    spin: Math.random() * Math.PI,
+    turn: (Math.random() - 0.5) * 0.25,
+    color: colors[Math.floor(Math.random() * colors.length)],
+  }));
+  const end = performance.now() + 3500;
+  const frame = (now) => {
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    for (const p of pieces) {
+      p.y += p.speed;
+      p.x += p.drift;
+      p.spin += p.turn;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.spin);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    }
+    if (now < end && !$("celebrate").hidden) requestAnimationFrame(frame);
+    else ctx.clearRect(0, 0, innerWidth, innerHeight);
+  };
+  requestAnimationFrame(frame);
+}
 
 // ---- Ask the trainer ----
 

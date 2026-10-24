@@ -89,6 +89,7 @@
       <h2>This week</h2>
       <ol id="week" class="week" aria-label="This week"></ol>
       <p id="week-total" class="muted small"></p>
+      <p id="streak-line" class="streak-line"></p>
     </section>
 
     <div class="dock">
@@ -155,6 +156,24 @@
       <span>Lock out</span>
     </button>
   </main>
+
+  <!-- Shown when the last lock of the day is locked. -->
+  <div id="celebrate" class="celebrate" role="dialog" aria-modal="true" aria-labelledby="celebrate-title" hidden>
+    <canvas id="confetti" class="confetti" aria-hidden="true"></canvas>
+    <div class="celebrate-card">
+      <div class="celebrate-lock" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="56" height="56"><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><rect x="5" y="11" width="14" height="10" rx="2.5" fill="currentColor"/></svg>
+      </div>
+      <h2 id="celebrate-title" class="celebrate-title"></h2>
+      <p id="celebrate-line"></p>
+      <p id="celebrate-burned" class="celebrate-burned"></p>
+      <ul id="celebrate-badges" class="badges"></ul>
+      <div class="celebrate-actions">
+        <button id="celebrate-close" type="button">Stay here</button>
+        <button id="celebrate-lock-out" class="primary" type="button">Lock out</button>
+      </div>
+    </div>
+  </div>
 
   <dialog id="settings">
     <form method="dialog" id="settings-form">

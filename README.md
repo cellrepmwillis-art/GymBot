@@ -51,9 +51,15 @@ On the workout screen every part of the session (warm-up, run, each exercise, ca
 - **Swap an exercise:** under each exercise, "Taken?" names an alternative. Tap it to swap that exercise in; tap again to move to the third choice, and again to come back around. Each exercise cycles through three choices. With the AI Trainer off, the planned one comes first, then one each of machines (Smith machines included), dumbbells or barbells, and anything else (cables, bodyweight). With a trainer on, each exercise starts with that trainer's favorite equipment and swaps follow its order: powerlifter barbell then Smith machine, bodybuilder cables then machines, weight loss machines then cables (quick to set up for circuits), GLP-1 machines then Smith machine (guided movement on a lightheaded day), marathon dumbbells and bodyweight (balance and single-leg strength). A swapped exercise starts unlocked. Every exercise has at least three choices at either kind of gym.
 - **Cardio only / strength training only:** two overrides under the workout. **Cardio only override** swaps the lifting for a warm-up and one longer cardio session (45 min, or 30 when time is short), matched to your aim and trainer: incline walking on a cut or weight loss, steady machines otherwise, brisk walking for GLP-1, an easy run for marathon. On a marathon run day, it's just the run. **Strength training only override** drops the cardio and the run and keeps the lifting. Tap the override that's on to go back to the full plan. Anything already locked stays locked. The rest day has no overrides; training on it takes picking a body part.
 - **See example:** every exercise and stretch has a ▶ See example link that opens a YouTube search for it done with good form (in the YouTube app, on phones that have it). Tapping the link doesn't lock the exercise.
+- **Celebrations:** locking the last lock of the day brings up a "Locked in!" screen with confetti, a buzz on phones that support it, the day's calories and any milestones, then **Lock out** or **Stay here**. It shows once a day; unlocking and relocking doesn't repeat it. Milestones:
+  - 🏆 every training day of the week finished: "You locked in this week: all six days' goals met. Official Locksmith level achieved." Four full weeks make you a Master Locksmith and twelve a Vault Keeper.
+  - 💪 5 or 6 of the past 7 days: "Arnold would be proud."
+  - 🔥 streaks of 3, 7, 14, 21, 30 days and on. Rest days are skipped, so they never break one.
+  - 🔑 your first fully locked day, and ⭐ 10, 25, 50, 100 and more.
+  The rest day gets a quieter "Recovery locked in" and doesn't count toward any of them. The options screen shows your current streak and Locksmith level under This week. Locked-in days are now kept for about a year so long streaks count.
 - **Calories burned:** each part of the workout has an effort level (MET) from the Compendium of Physical Activities, for example 3.5 for lifting, 4.3 for circuits, 5.3 for an incline treadmill walk and 8.3 for an easy run. Calories = MET × your weight in kg × hours, counted only for the parts you've locked. Your weight comes from Settings, or from CookBot's profile if CookBot runs on the same site; until then it uses 170 lb. These are estimates, and real burn varies from person to person. The week strip on the options screen shows each day's calories and the week's total.
 - **Ask the trainer:** type a quick question, like "should I lean forward or back on incline curls?", and get a short gut-check answer without leaving the app. It's on the workout screen; tap 💬 at the top to jump there. Today's workout, aim, trainer and gym go with the question so the answer fits your plan, and you can ask follow-ups. For anything bigger, it suggests a YouTube search for a form video. The chat starts over each day, or after 10 questions.
-- **No accounts.** Your settings, locked-in days and today's questions are stored only in your browser's local storage. Locked-in days are kept for 60 days.
+- **No accounts.** Your settings, locked-in days and today's questions are stored only in your browser's local storage. Locked-in days are kept for about a year.
 - **Back up and restore:** clearing Chrome's "Cookies and site data" erases everything above (clearing history or cached files doesn't). Settings → **Back up** saves a `gymbot-backup-<date>.json` file to your downloads, and **Restore** loads one back, after a wipe or on a new phone. The file includes your API key if you added one, so keep it private.
 
 ## Ask the trainer (optional)
@@ -85,8 +91,9 @@ python3 -m http.server 8000
 | `trainers.js` | The AI Trainer profiles: bodybuilder, powerlifter, marathon, weight loss and GLP-1 |
 | `ask.js` | Ask the trainer (Claude API call) |
 | `met.js` | Calories burned: effort levels and the formula |
+| `celebrate.js` | The end-of-day celebration, streaks and Locksmith levels |
 | `day.js` | The midnight day boundary |
 | `sw.js`, `manifest.webmanifest`, `icon*.png`, `icon.svg` | Offline caching, home-screen install and the app icon |
 | `vendor/anthropic-sdk-0.131.0.js` | The Anthropic TypeScript SDK (MIT License), bundled into one file, the same as CookBot's |
 
-Tests for the schedule, body-part workouts, trainers, calories burned, time of day, aims and gym equipment: `node --test`
+Tests for the schedule, body-part workouts, trainers, calories burned, celebrations, time of day, aims and gym equipment: `node --test`
