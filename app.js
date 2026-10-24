@@ -4,7 +4,7 @@ import { celebrate, streak, level } from "./celebrate.js";
 import { analyzeWeight, daysBetween } from "./weight.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 12:00 PM";
+const VERSION = "2026-10-24 · 1:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;

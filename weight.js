@@ -18,6 +18,18 @@ const STEADY = 0.25; // % of body weight a week
 const SAFE_LOSS = 1.0;
 const LEAN_GAIN = 0.5;
 
+// GLP-1 medications (semaglutide, tirzepatide) move the expected pace. We
+// don't know how far into treatment someone is, so the range covers the
+// whole course: loss is fastest in the first months, often around 1% a week
+// or a little more, then levels off. In the big trials, semaglutide 2.4 mg
+// averaged about 15% over 68 weeks (STEP 1) and tirzepatide about 15–21%
+// over 72 weeks (SURMOUNT-1), most of it in the first nine months or so.
+const GLP1_SLOW = 0.25; // slower than this is leveling off
+const GLP1_FAST = 1.5; // faster than this is fast even on a GLP-1
+
+// Expected loss by now, as "a–b lb", for `weeks` weeks at `low`–`high`% a week.
+const expected = (startLb, weeks, low, high) => `${((startLb * low * weeks) / 100).toFixed(1)}–${((startLb * high * weeks) / 100).toFixed(1)} lb`;
+
 const lbs = (n) => `${Math.abs(n).toFixed(1)} lb`;
 
 // start and latest: { day, lb }. aim: "cut", "maintain" or "gain". Returns
@@ -43,11 +55,22 @@ export function analyzeWeight({ start, latest, aim = "maintain", trainer = "none
   const glp1 = trainer === "glp1";
   const result = (tone, label, headline, detail) => ({ ...base, perWeek, tone, label, headline: `${headline} (${pace})`, detail });
 
+  // On a GLP-1, losing is expected on a cut and on maintain alike.
+  if (glp1 && aim !== "gain") {
+    const weeks = days / 7;
+    const compare = `A regular cut would usually be down about ${expected(start.lb, weeks, 0.5, 1)} by now (0.5–1% of your weight a week). On a GLP-1, about ${expected(start.lb, weeks, GLP1_SLOW, GLP1_FAST)} is in the expected range: faster in the first months, leveling off after about a year.`;
+    if (pct <= -GLP1_FAST) return result("warn", "Heads up", "Losing fast, even for a GLP-1.", `${compare} More than 1.5% a week means more of the loss can come from muscle. Hit your protein goal every day, keep lifting, and mention it to your prescriber.`);
+    if (pct <= -SAFE_LOSS) return result("good", "On track", "Losing faster than a regular cut, as expected on a GLP-1.", `${compare} Keep protein high and keep lifting so the loss is fat, not muscle.`);
+    if (pct <= -GLP1_SLOW) return result("good", "On track", "Losing at a steady pace.", `${compare} Keep locking in.`);
+    if (pct < STEADY) {
+      return result("warn", "Leveling off", "Weight is holding steady.", `${compare} Loss slowing down is normal later in treatment. If you're in your first few months, or it lasts more than a few weeks, tighten up your food tracking in CookBot and check in with your prescriber.`);
+    }
+    return result("bad", "Off track", "Weight is going up.", `${compare} Weight going up on a GLP-1 is worth a closer look: check portions in CookBot, and talk to your prescriber if it continues. Lock back in, champ.`);
+  }
+
   if (aim === "cut") {
     if (pct <= -SAFE_LOSS) {
-      return result("warn", "Heads up", "Losing fast.", glp1
-        ? "Fast loss is common in the first months on a GLP-1, but more of it can come from muscle. Hit your protein goal every day, keep lifting, and mention it to your prescriber if it keeps up."
-        : "More than 1% of your body weight a week risks losing muscle along with fat. Eat a little more, keep protein high and keep lifting.");
+      return result("warn", "Heads up", "Losing fast.", "More than 1% of your body weight a week risks losing muscle along with fat. Eat a little more, keep protein high and keep lifting.");
     }
     if (pct <= -STEADY) return result("good", "On track", "Losing at a safe pace.", "Right where a cut should be: about 0.5–1% of your body weight a week. Keep locking in.");
     if (pct < STEADY) {

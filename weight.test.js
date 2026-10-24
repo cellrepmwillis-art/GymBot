@@ -28,7 +28,6 @@ test("cut: safe, fast, stalling, going up", () => {
   const fast = analyzeWeight({ start, latest: at(14, 194), aim: "cut" }); // 3 lb/wk = 1.5%
   assert.equal(fast.tone, "warn");
   assert.match(fast.detail, /risks losing muscle/);
-  assert.match(analyzeWeight({ start, latest: at(14, 194), aim: "cut", trainer: "glp1" }).detail, /common in the first months on a GLP-1/);
   assert.equal(analyzeWeight({ start, latest: at(14, 199.6), aim: "cut" }).label, "Stalling");
   const up = analyzeWeight({ start, latest: at(14, 202), aim: "cut" });
   assert.equal(up.tone, "bad");
@@ -46,4 +45,24 @@ test("gain: lean, fast, stalling, losing", () => {
   assert.equal(analyzeWeight({ start, latest: at(14, 203), aim: "gain" }).label, "Heads up"); // 0.75%
   assert.equal(analyzeWeight({ start, latest: at(14, 200), aim: "gain" }).label, "Stalling");
   assert.equal(analyzeWeight({ start, latest: at(14, 198), aim: "gain" }).tone, "bad");
+});
+
+test("GLP-1 widens what counts as on track, with a side-by-side", () => {
+  // 2 weeks from 200 lb: a regular cut is 2–4 lb, a GLP-1 1–6 lb.
+  const glp1 = (lb, aim = "cut") => analyzeWeight({ start, latest: at(14, lb), aim, trainer: "glp1" });
+  const fastish = glp1(197); // 1.5 lb/wk = 0.75%
+  assert.equal(fastish.label, "On track");
+  assert.match(fastish.detail, /^A regular cut would usually be down about 2\.0–4\.0 lb by now .* On a GLP-1, about 1\.0–6\.0 lb is in the expected range/);
+  // 1.25% a week: too fast on a regular cut, expected on a GLP-1.
+  assert.equal(analyzeWeight({ start, latest: at(14, 195), aim: "cut" }).label, "Heads up");
+  assert.equal(glp1(195).headline, "Losing faster than a regular cut, as expected on a GLP-1. (−2.5 lb a week)");
+  // Over 1.5% a week is fast even on a GLP-1.
+  assert.equal(glp1(193).label, "Heads up");
+  // Flat is leveling off, not stalling.
+  assert.equal(glp1(199.8).label, "Leveling off");
+  assert.equal(glp1(202).tone, "bad");
+  // Losing on maintain is expected on a GLP-1.
+  assert.equal(glp1(197, "maintain").label, "On track");
+  // Gain is judged as usual.
+  assert.equal(glp1(201.5, "gain").label, "On track");
 });
