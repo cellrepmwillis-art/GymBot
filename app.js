@@ -5,7 +5,7 @@ import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-25 · 8:00 AM";
+const VERSION = "2026-10-25 · 9:00 AM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -35,8 +35,8 @@ function load() {
   // weekday of a weekly GLP-1 shot, or "".
   // restDay: the weekday off (Sunday is 0). restAck: the day "Lock in anyway"
   // was tapped on the rest day, so the reminder shows once.
-  // weightLb: for calories burned; null uses CookBot's weight, if any.
-  // heightIn: for the protein target; null uses CookBot's height, if any.
+  // weightLb: for calories burned and the protein target, or null.
+  // heightIn: for the protein target, or null.
   // apiKey: the person's Anthropic API key, for Ask the trainer. chat: today's
   // questions, { day, history, shown: [{ q, a }], context }, where history is
   // the conversation as sent to the API and context the last workout
@@ -87,29 +87,14 @@ for (const [key, lock] of Object.entries(state.locked)) {
   if (lock.at && dayKey(new Date(lock.at)) !== key) lock.at = dateOfKey(key, 23, 30).getTime();
 }
 
-// CookBot, hosted on the same site, keeps its settings under "cookbot".
-function cookbot() {
-  try {
-    return JSON.parse(localStorage.getItem("cookbot")) ?? {};
-  } catch {
-    return {};
-  }
-}
-
-// Body weight for calories: GymBot's own setting, else CookBot's profile.
+// Body weight for calories, from Settings (or the latest weigh-in).
 function weight() {
   if (state.weightLb > 0) return { lb: state.weightLb, from: "settings" };
-  const lb = Number(cookbot().profile?.weightLb);
-  if (lb > 0) return { lb, from: "cookbot" };
   return { lb: DEFAULT_WEIGHT_LB, from: "default" };
 }
 
-// Height in inches, from Settings or CookBot's profile, or null.
-function height() {
-  if (state.heightIn > 0) return state.heightIn;
-  const inches = Number(cookbot().profile?.heightIn);
-  return inches > 0 ? inches : null;
-}
+// Height in inches from Settings, or null.
+const height = () => (state.heightIn > 0 ? state.heightIn : null);
 
 // ---- Shared ----
 
@@ -578,7 +563,7 @@ function renderWorkout() {
   $("plan-minutes").hidden = nothingToLock;
   $("burned-note").textContent = from === "default"
     ? `Estimated for ${DEFAULT_WEIGHT_LB} lb. Add your weight in Settings for a better number.`
-    : `Estimated for ${lb} lb${from === "cookbot" ? " (from CookBot)" : ""}.`;
+    : `Estimated for ${lb} lb.`;
 
   const list = $("items");
   list.replaceChildren();
@@ -1082,24 +1067,9 @@ document.querySelector("#lock-out .lock-icon").innerHTML = lockIcon(false);
 
 function showSettingsHints() {
   const typed = Number($("weight-input").value);
-  const fromCookbot = Number(cookbot().profile?.weightLb);
-  $("weight-note").textContent = typed > 0 ? ""
-    : fromCookbot > 0 ? `Leave it blank to use your CookBot weight (${fromCookbot} lb).`
-    : `Until you add it, calories are estimated for ${DEFAULT_WEIGHT_LB} lb.`;
-  const cookbotHeight = Number(cookbot().profile?.heightIn);
-  const typedHeight = Number($("feet-input").value) || Number($("inches-input").value);
-  $("height-note").textContent = typedHeight ? "For your protein target."
-    : cookbotHeight > 0 ? `Leave it blank to use your CookBot height (${Math.floor(cookbotHeight / 12)}'${cookbotHeight % 12}").`
-    : "For your protein target. Optional.";
-  const shared = cookbot().apiKey || "";
-  $("cookbot-key").hidden = !shared || $("key-input").value.trim() === shared;
+  $("weight-note").textContent = typed > 0 ? "" : `Until you add it, calories are estimated for ${DEFAULT_WEIGHT_LB} lb.`;
 }
 $("settings-form").addEventListener("input", showSettingsHints);
-
-$("use-cookbot-key").addEventListener("click", () => {
-  $("key-input").value = cookbot().apiKey || "";
-  showSettingsHints();
-});
 
 function openSettings() {
   $("rest-input").value = String(state.restDay);
