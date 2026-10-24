@@ -316,3 +316,6 @@ main[hidden], .dock[hidden] { display: none; }
 .weigh-wait p { margin: 0 0 10px; font-weight: 600; }
 .weigh-wait-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .weigh-wait-actions button { padding: 10px 8px; }
+.rest-link { margin-top: 12px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.rest-link[hidden], .overrides button[hidden] { display: none; }
+#rest-dialog p { margin: 0 0 16px; }

@@ -1,7 +1,9 @@
 // Celebrations for finishing a day (every lock locked) and the milestones
 // that come with it: full weeks, 5 of the past 7 days, streaks and totals.
 // `locked` is the app's { "2026-10-23": { complete, ... } } map, where
-// `complete` means every item that day was locked.
+// `complete` means every item that day was locked, `unexpectedRest` that
+// the day was taken off with the "Unexpected rest day" override and
+// `streakBreak` that taking it cost the streak.
 import { previousDay } from "./day.js";
 
 // Weekday (Sunday is 0) of a day key like "2026-10-23".
@@ -13,17 +15,37 @@ export function weekdayOf(key) {
 const isComplete = (locked, key) => Boolean(locked[key]?.complete);
 
 // Training days finished in a row, counting back from today (or yesterday,
-// while today isn't finished yet). Rest days are skipped, not counted, so
-// they never break a streak.
+// while today isn't finished yet). Rest days, and unexpected rest days that
+// didn't cut the lock, are skipped, not counted, so they don't break it.
 export function streak(locked, today, restDay) {
   let count = 0;
-  let key = isComplete(locked, today) ? today : previousDay(today);
+  let key = isComplete(locked, today) || locked[today]?.unexpectedRest ? today : previousDay(today);
   for (let i = 0; i < 1000; i++, key = previousDay(key)) {
     if (weekdayOf(key) === restDay) continue;
+    if (locked[key]?.unexpectedRest) {
+      if (locked[key].streakBreak) break;
+      continue;
+    }
     if (!isComplete(locked, key)) break;
     count++;
   }
   return count;
+}
+
+// Unexpected rest days already taken this training week, today left out.
+export function unexpectedRests(locked, today, restDay) {
+  return trainingWeek(today, restDay).days.filter((key) => key !== today && locked[key]?.unexpectedRest).length;
+}
+
+// What to say before an unexpected rest day. `taken` is how many were
+// already taken this week; the scheduled rest day makes this rest day number
+// taken + 2. The first two keep the streak; after that it costs the streak.
+export function unexpectedRestPrompt(taken) {
+  const nth = taken + 2;
+  const ordinal = ["", "1st", "2nd", "3rd"][nth] ?? `${nth}th`;
+  if (taken === 0) return { breaksStreak: false, title: "Taking an extra rest day?", text: "No problem taking an extra day, you deserve it, boss. Your streak is safe.", yes: "Rest today", no: "Never mind" };
+  if (taken === 1) return { breaksStreak: false, title: `That's your ${ordinal} rest day this week`, text: "Got it, hope you feel better. Back to locking in tomorrow, champ. Your streak is still safe.", yes: "Rest today", no: "Never mind" };
+  return { breaksStreak: true, title: `That's your ${ordinal} rest day this week`, text: "Your streak will be lost. Proceed to cut the lock?", yes: "Cut the lock", no: "Keep my streak" };
 }
 
 // Finished workouts in the last seven days, today included. Rest-day

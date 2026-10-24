@@ -315,3 +315,11 @@ test("cardio only and strength only overrides", () => {
   assert.equal(suggest({ date: at(6, 10), mode: "strength" }).rest, true);
   assert.equal(suggest({ date: at(6, 10), mode: "cardio" }).rest, true);
 });
+
+test("an unexpected rest day is the stretching rest day", () => {
+  const w = suggest({ date: at(1, 10), mode: "rest", target: "chest" });
+  assert.equal(w.rest, true);
+  assert.equal(w.mode, "rest");
+  assert.equal(w.title, "Unexpected rest day");
+  assert.ok(w.items.every((i) => i.kind === "stretch"));
+});

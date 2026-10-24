@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { streak, pastSeven, trainingWeek, level, celebrate, weekdayOf } from "./celebrate.js";
+import { streak, pastSeven, trainingWeek, level, celebrate, weekdayOf, unexpectedRests, unexpectedRestPrompt } from "./celebrate.js";
 
 // 2026-10-19 is a Monday; Sunday (0) is the rest day.
 const done = (...keys) => Object.fromEntries(keys.map((key) => [key, { complete: true }]));
@@ -70,4 +70,34 @@ test("rest days get a gentle celebration and count for nothing", () => {
   assert.equal(celebration.title, "Recovery locked in");
   assert.equal(celebration.badges.length, 0);
   assert.equal(achievements.completeDays, 3);
+});
+
+test("unexpected rest days keep the streak, until the lock is cut", () => {
+  const locked = done(OCT(19), OCT(20), OCT(22), OCT(23));
+  locked[OCT(21)] = { unexpectedRest: true };
+  assert.equal(streak(locked, OCT(23), 0), 4);
+  // Today taken off: the streak stands.
+  locked[OCT(24)] = { unexpectedRest: true };
+  assert.equal(streak(locked, OCT(24), 0), 4);
+  // Cutting the lock ends it.
+  locked[OCT(24)].streakBreak = true;
+  assert.equal(streak(locked, OCT(24), 0), 0);
+  // ...but a new streak starts the next training day.
+  locked[OCT(26)] = { complete: true };
+  assert.equal(streak(locked, OCT(26), 0), 1);
+});
+
+test("unexpected rest prompts get firmer", () => {
+  const locked = { [OCT(20)]: { unexpectedRest: true }, [OCT(22)]: { unexpectedRest: true }, [OCT(24)]: { unexpectedRest: true } };
+  assert.equal(unexpectedRests(locked, OCT(24), 0), 2); // today left out
+  assert.equal(unexpectedRests(locked, OCT(26), 0), 0); // a new week
+  assert.match(unexpectedRestPrompt(0).text, /you deserve it, boss/);
+  assert.equal(unexpectedRestPrompt(0).breaksStreak, false);
+  assert.equal(unexpectedRestPrompt(1).title, "That's your 3rd rest day this week");
+  assert.match(unexpectedRestPrompt(1).text, /hope you feel better\. Back to locking in tomorrow, champ/);
+  const third = unexpectedRestPrompt(2);
+  assert.equal(third.title, "That's your 4th rest day this week");
+  assert.equal(third.text, "Your streak will be lost. Proceed to cut the lock?");
+  assert.equal(third.breaksStreak, true);
+  assert.equal(unexpectedRestPrompt(3).title, "That's your 5th rest day this week");
 });

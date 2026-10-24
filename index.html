@@ -53,6 +53,7 @@
     <section class="card">
       <h2>Focus</h2>
       <div id="focus" class="focus" role="group" aria-label="Workout focus"></div>
+      <button id="rest-link" class="link-btn small rest-link" type="button">Need an unexpected rest day?</button>
     </section>
 
     <section class="card">
@@ -155,6 +156,7 @@
       <div class="overrides" id="overrides">
         <button id="cardio-only" type="button" aria-pressed="false">Cardio only override</button>
         <button id="strength-only" type="button" aria-pressed="false">Strength training only override</button>
+        <button id="rest-override" type="button" aria-pressed="false">Unexpected rest day override</button>
       </div>
     </section>
 
@@ -198,6 +200,17 @@
       </div>
     </div>
   </div>
+
+  <dialog id="rest-dialog" aria-labelledby="rest-dialog-title">
+    <form method="dialog">
+      <h2 id="rest-dialog-title"></h2>
+      <p id="rest-dialog-text"></p>
+      <div class="row">
+        <button value="no" id="rest-dialog-no"></button>
+        <button value="yes" class="primary" id="rest-dialog-yes"></button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="settings">
     <form method="dialog" id="settings-form">

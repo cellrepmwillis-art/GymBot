@@ -385,7 +385,7 @@ const MAX_CHOICES = 3;
 // trainer's favorite kind of equipment and the rest follow its order;
 // without one, the plan's own pick comes first, then machine, free weight,
 // other. `mode` limits the day: "cardio" for cardio only, "strength" for
-// lifting only, or null for the full plan. `target` is a body part from TARGETS
+// lifting only, "rest" for an unexpected rest day, or null for the full plan. `target` is a body part from TARGETS
 // instead of today's split. `trainer` is a key of TRAINERS, and `shotDay` the
 // weekday (Sunday is 0) of a weekly GLP-1 shot. `restDay` is the weekday off;
 // on it, without a target, this returns a rest day.
@@ -410,6 +410,11 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
     split ??= splitFor(day, off);
     runDay = null;
   }
+  // An unexpected rest day is a rest day like the scheduled one.
+  if (mode === "rest") {
+    split = null;
+    runDay = null;
+  }
   if (split && coach.mainSwap?.[split.key] && !TARGETS[target]) split = { ...split, slots: [coach.mainSwap[split.key], ...split.slots.slice(1)] };
   const ctx = { plan, split, window, gym, shotSoon };
   const sources = coach.sources;
@@ -422,8 +427,9 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
     return {
       ...base,
       rest: true,
-      title: "Rest day",
-      focus: `Stretching only. Recover for ${DAY_NAMES[(day + 1) % 7]}.`,
+      mode: mode === "rest" ? "rest" : null,
+      title: mode === "rest" ? "Unexpected rest day" : "Rest day",
+      focus: mode === "rest" ? "Stretching only. Back to locking in tomorrow." : `Stretching only. Recover for ${DAY_NAMES[(day + 1) % 7]}.`,
       minutes: items.reduce((total, item) => total + item.minutes, 0),
       items,
       notes: [

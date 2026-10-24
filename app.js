@@ -1,10 +1,10 @@
 import { dayKey, previousDay, nextReset } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned } from "./workouts.js";
-import { celebrate, streak, level } from "./celebrate.js";
+import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt } from "./celebrate.js";
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 3:00 PM";
+const VERSION = "2026-10-24 · 4:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -229,7 +229,8 @@ function renderOptions() {
     li.append(DAY_NAMES[(i + 1) % 7].slice(0, 3));
     const mark = document.createElement("span");
     mark.className = "mark";
-    if (lock?.burned) mark.textContent = lock.burned;
+    if (lock?.unexpectedRest) mark.textContent = "💤";
+    else if (lock?.burned) mark.textContent = lock.burned;
     else mark.textContent = lock ? "✓" : (i + 1) % 7 === Number(state.restDay) ? "–" : "";
     li.append(mark);
     li.classList.toggle("today", key === todayKey);
@@ -248,7 +249,9 @@ function renderOptions() {
   renderWeight();
 
   const lock = state.locked[todayKey];
-  $("lock-in-label").textContent = lock?.done?.length ? "Lock back in" : "Lock in";
+  $("lock-in-label").textContent = lock?.unexpectedRest ? "Back to my rest day" : lock?.done?.length ? "Lock back in" : "Lock in";
+  // Unexpected rest days are for training days.
+  $("rest-link").hidden = Boolean(lock?.unexpectedRest) || gymDay(now) === Number(state.restDay);
 }
 
 // ---- Lock-In Weight ----
@@ -366,6 +369,8 @@ $("lock-in").addEventListener("click", () => {
     focus,
     shuffle: same ? previous.shuffle ?? 0 : 0,
     mode: same ? previous.mode ?? null : null,
+    unexpectedRest: same ? previous.unexpectedRest ?? false : false,
+    streakBreak: same ? previous.streakBreak ?? false : false,
     swaps: same ? previous.swaps ?? {} : {},
     done: same ? previous.done ?? [] : [],
     active: true,
@@ -515,9 +520,13 @@ function renderWorkout() {
     });
     list.append(li);
   }
-  // The rest day has no overrides: training on it takes picking a body part.
-  $("overrides").hidden = w.rest;
-  for (const [id, mode, label] of [["cardio-only", "cardio", "Cardio only override"], ["strength-only", "strength", "Strength training only override"]]) {
+  // The scheduled rest day has no overrides: training on it takes picking a
+  // body part. An unexpected rest day only offers going back to the plan.
+  const restOverride = lock.mode === "rest";
+  $("overrides").hidden = w.rest && !restOverride;
+  $("cardio-only").hidden = restOverride;
+  $("strength-only").hidden = restOverride;
+  for (const [id, mode, label] of [["cardio-only", "cardio", "Cardio only override"], ["strength-only", "strength", "Strength training only override"], ["rest-override", "rest", "Unexpected rest day override"]]) {
     const on = lock.mode === mode;
     $(id).setAttribute("aria-pressed", String(on));
     $(id).textContent = on ? `${label} on · tap for the full plan` : label;
@@ -534,6 +543,54 @@ function setMode(mode) {
 }
 $("cardio-only").addEventListener("click", () => setMode("cardio"));
 $("strength-only").addEventListener("click", () => setMode("strength"));
+
+// ---- Unexpected rest day ----
+
+// Asks first, more firmly each time this week; the third unexpected rest day
+// in a week (the fourth rest day, counting the scheduled one) costs the
+// streak.
+function askUnexpectedRest() {
+  const prompt = unexpectedRestPrompt(unexpectedRests(state.locked, dayKey(), Number(state.restDay)));
+  $("rest-dialog-title").textContent = prompt.title;
+  $("rest-dialog-text").textContent = prompt.text;
+  $("rest-dialog-yes").textContent = prompt.yes;
+  $("rest-dialog-no").textContent = prompt.no;
+  $("rest-dialog").dataset.breaks = String(prompt.breaksStreak);
+  $("rest-dialog").showModal();
+}
+
+$("rest-dialog").addEventListener("close", () => {
+  if ($("rest-dialog").returnValue !== "yes") return;
+  const today = dayKey();
+  const lock = state.locked[today] ?? { at: Date.now(), focus: null, shuffle: 0, swaps: {}, done: [], burned: 0 };
+  Object.assign(lock, {
+    mode: "rest",
+    unexpectedRest: true,
+    streakBreak: $("rest-dialog").dataset.breaks === "true",
+    active: true,
+    done: [],
+    celebrated: false,
+  });
+  state.locked[today] = lock;
+  save();
+  render();
+  window.scrollTo({ top: 0 });
+});
+
+$("rest-link").addEventListener("click", askUnexpectedRest);
+
+// The override: on asks first; off goes back to the full plan, streak and all.
+$("rest-override").addEventListener("click", () => {
+  const today = lockedWorkout();
+  if (!today) return;
+  if (today.lock.mode !== "rest") {
+    askUnexpectedRest();
+    return;
+  }
+  Object.assign(today.lock, { mode: null, unexpectedRest: false, streakBreak: false, done: [] });
+  save();
+  renderWorkout();
+});
 
 function lockOut() {
   const lock = state.locked[dayKey()];
