@@ -4,7 +4,7 @@ import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weekly
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 11:00 PM";
+const VERSION = "2026-10-25 · 1:00 AM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -244,7 +244,7 @@ function renderOptions() {
   const window = timeWindow(now);
   $("now-day").textContent = DAY_NAMES[gymDay(now)];
   const clock = now.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  $("now-time").textContent = `${window.label} · ${clock} · gym is usually ${window.crowd}`;
+  $("now-time").textContent = state.gym === "outdoor" ? `${window.label} · ${clock}` : `${window.label} · ${clock} · gym is usually ${window.crowd}`;
   const aim = AIMS[state.aim]?.label ?? "Maintain";
   const coach = TRAINER_CHIPS[state.trainer];
   $("aim-chip").textContent = coach ? `${aim} · ${coach}` : aim;
@@ -276,7 +276,7 @@ function renderOptions() {
 
   // "Planet Fitness style (Smith machines, ...)": the name on the button,
   // the part in parentheses under it.
-  segmented($("gym-choices"), Object.keys(GYMS).map((key) => [key, GYMS[key].label.split(" (")[0]]), state.gym, (value) => {
+  segmented($("gym-choices"), Object.keys(GYMS).map((key) => [key, GYMS[key].label.split(" (")[0].replace(/ style$/, "")]), state.gym, (value) => {
     state.gym = value;
     save();
     renderOptions();
@@ -291,7 +291,7 @@ function renderOptions() {
   // Progress toward the weekly guideline goals.
   const { stats } = weeklyBadges({ locked: state.locked, today: todayKey, restDay: Number(state.restDay) });
   const tick = (ok) => (ok ? " ✓" : "");
-  $("week-goals").textContent = `${stats.gymDays} gym ${stats.gymDays === 1 ? "day" : "days"} · ${Math.min(stats.cardioMinutes, 999)} of ${CARDIO_GOAL} cardio min${tick(stats.cardioMinutes >= CARDIO_GOAL)} · strength ${Math.min(stats.strengthDays, STRENGTH_DAYS)} of ${STRENGTH_DAYS} days${tick(stats.strengthDays >= STRENGTH_DAYS)}`;
+  $("week-goals").textContent = `${stats.gymDays} ${state.gym === "outdoor" ? "workout" : "gym"} ${stats.gymDays === 1 ? "day" : "days"} · ${Math.min(stats.cardioMinutes, 999)} of ${CARDIO_GOAL} cardio min${tick(stats.cardioMinutes >= CARDIO_GOAL)} · strength ${Math.min(stats.strengthDays, STRENGTH_DAYS)} of ${STRENGTH_DAYS} days${tick(stats.strengthDays >= STRENGTH_DAYS)}`;
   const run = streak(state.locked, todayKey, Number(state.restDay));
   const rank = level(state.achievements.fullWeeks);
   $("streak-line").textContent = [run >= 2 ? `🔥 ${run}-day streak` : null, rank ? `🏆 ${rank}` : null].filter(Boolean).join(" · ");
@@ -566,7 +566,8 @@ function renderWorkout() {
           lock.done = lock.done.filter((id) => id !== item.id);
           renderWorkout();
         });
-        detail.append(" · Taken? ", swap);
+        // Nothing's ever taken at the park.
+        detail.append(state.gym === "outdoor" ? " · Swap: " : " · Taken? ", swap);
       }
       detail.append(" ", exampleLink(item.name));
     } else {
@@ -588,7 +589,7 @@ function renderWorkout() {
       state.achievements.weekly ??= {};
       // Rest-day stretching doesn't move the weekly goals, so it doesn't check.
       const weekly = w.rest ? { badges: [], awarded: state.achievements.weekly[week] ?? [] }
-        : weeklyBadges({ locked: state.locked, today, restDay: Number(state.restDay), awarded: state.achievements.weekly[week] });
+        : weeklyBadges({ locked: state.locked, today, restDay: Number(state.restDay), awarded: state.achievements.weekly[week], outdoor: state.gym === "outdoor" });
       state.achievements.weekly[week] = weekly.awarded;
       save();
       if (lock.complete && !lock.celebrated) celebrateToday(lock, weekly.badges);
@@ -815,8 +816,14 @@ function workoutContext() {
   return parts.join(" ");
 }
 
+// Bumped when ask.js's instructions change: a conversation is only valid
+// with the instructions it started with, so older ones start over.
+const CHAT_VERSION = 2;
+
 function todaysChat() {
-  if (state.chat?.day !== dayKey()) state.chat = { day: dayKey(), history: [], shown: [], context: null };
+  if (state.chat?.day !== dayKey() || state.chat.version !== CHAT_VERSION) {
+    state.chat = { day: dayKey(), version: CHAT_VERSION, history: [], shown: [], context: null };
+  }
   return state.chat;
 }
 

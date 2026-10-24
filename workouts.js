@@ -7,6 +7,7 @@
 import { RESET_HOUR } from "./day.js";
 import { TRAINERS, RUNNER_LEGS } from "./trainers.js";
 import { MET } from "./met.js";
+import { OUTDOOR } from "./outdoor.js";
 
 export { TRAINERS };
 export { MET, caloriesBurned } from "./met.js";
@@ -39,6 +40,7 @@ export const AIMS = {
 export const GYMS = {
   pf: { label: "Planet Fitness style (Smith machines, dumbbells, machines)" },
   af: { label: "Anytime Fitness style (also barbells and squat racks)" },
+  outdoor: { label: "Outdoors & home (parks, tracks, your living room)" },
 };
 
 // Each slot lists choices in order of preference. "barbell" choices are only
@@ -290,10 +292,38 @@ function cardio(aim, split, window) {
 
 // Warm-up: 5 minutes of easy cardio, longer in the early morning, then light
 // sets of the first exercise.
-function warmup(window, first) {
+function warmup(window, first, gym) {
   const minutes = window.key === "early" ? 8 : 5;
+  if (gym === "outdoor") return `${minutes} min easy walk, then arm circles, leg swings and a few bodyweight squats.`;
   const name = first.startsWith("Smith") ? first : first[0].toLowerCase() + first.slice(1);
   return `${minutes} min easy on the bike or treadmill, then 2 light sets of ${name}.`;
+}
+
+// The aims' tips, for bodyweight work.
+const OUTDOOR_TIPS = {
+  gain: "Beat last week: a rep or two more on each exercise, or move to the harder swap.",
+  maintain: "Keep the reps about the same and focus on clean form.",
+  cut: "Keep your reps up on the first exercise. Too easy? Lower slowly, over 3 seconds.",
+};
+
+// Cardio after the workout for the "Outdoors & home" gym: walking at the
+// park or around a track, as [minutes, what to do, MET].
+function outdoorCardio({ plan, coachKey, split, window, shotSoon }) {
+  const legs = /^legs|runnerLegs/.test(split.key);
+  const short = window.budget < 6;
+  if (coachKey === "glp1") {
+    return shotSoon ? [15, "Easy 15–20 min walk. Skip it if you feel sick.", MET.easyWalk]
+      : [30, "30 min brisk walk at the park or around the track, at a pace you can still talk at.", MET.briskWalk];
+  }
+  if (coachKey === "weightLoss") return short ? [20, "20 min brisk walk.", MET.briskWalk] : [45, "45 min brisk walk at the park or around the track.", MET.briskWalk];
+  if (coachKey === "powerlifter") return [10, "10 min easy walk.", MET.easyWalk];
+  if (plan === "gain") return [10, "Optional: 10 min easy walk to cool down.", MET.easyWalk];
+  if (plan === "maintain") {
+    const minutes = short || legs ? 15 : 30;
+    return [minutes, `${minutes} min brisk walk at the park or around the track.`, MET.briskWalk];
+  }
+  const minutes = short ? 20 : legs ? 25 : 40;
+  return [minutes, `${minutes} min brisk walk, with hills if you can find them, at a pace where talking takes some effort.`, MET.inclineWalk];
 }
 
 // The "Cardio only" override: a warm-up and one longer cardio session in
@@ -303,13 +333,19 @@ function cardioOnly({ base, coachKey, plan, window, gym, shotSoon, runDay, ctx, 
   let session;
   if (runDay) session = runDay.run(ctx);
   else if (coachKey === "marathon") session = [long, `Easy run, ${long} min, at a pace you could talk at.`, MET.easyRun];
+  else if (gym === "outdoor") session = coachKey === "glp1" && shotSoon
+    ? [20, "Easy 20 min walk. Skip it if you feel sick.", MET.easyWalk]
+    : plan === "cut" || coachKey === "weightLoss"
+      ? [long, `${long} min brisk walk at the park or around the track, with hills if you can find them.`, MET.inclineWalk]
+      : [long, `${long} min brisk walk at the park or around the track, at a pace that's hard but lets you talk.`, MET.briskWalk];
   else if (coachKey === "glp1") session = shotSoon
     ? [20, "Easy 20 min walk. Skip it if you feel sick.", MET.easyWalk]
     : [long, `${long} min brisk walk or bike at a pace you can still talk at.`, MET.briskWalk];
   else if (plan === "cut" || coachKey === "weightLoss") session = [long, `${long} min incline treadmill walk (10–12% incline, about 3 mph). Split it with the StairMaster or bike if you like.`, MET.inclineWalk];
   else session = [long, `${long} min of steady cardio: mix the bike, elliptical and rower at a pace that's hard but lets you talk.`, MET.moderateMachine];
   const [minutes, text, met] = session;
-  const warmupText = runDay ? "5 min brisk walk, then leg swings and a few 20-second strides." : "5 min easy on the bike or treadmill, building up to your cardio pace.";
+  const warmupText = runDay ? "5 min brisk walk, then leg swings and a few 20-second strides."
+    : gym === "outdoor" ? "5 min easy walk, building up to your pace." : "5 min easy on the bike or treadmill, building up to your cardio pace.";
   const items = [
     { id: "warmup", kind: "warmup", name: "Warm-up", text: warmupText, minutes: 5, met: MET.warmup },
     { id: runDay ? "run" : "cardio", kind: runDay ? "run" : "cardio", name: runDay ? runDay.title.split(" + ")[0] : "Cardio", text, minutes, met },
@@ -362,9 +398,11 @@ const splitByKey = (key) => (key === "runnerLegs" ? RUNNER_LEGS : SPLITS[key] ??
 export function equipmentKind(name) {
   if (/smith/i.test(name)) return "smith";
   if (/barbell/i.test(name)) return "barbell";
-  if (/cable|pushdown|face pull/i.test(name)) return "cable";
+  // Resistance bands pull like cables.
+  if (/cable|pushdown|face pull|\bband\b/i.test(name)) return "cable";
   if (/machine|leg press|pec deck|pulldown|hack squat|leg curl|leg extension|calf press|seated calf raise/i.test(name)) return "machine";
-  if (/dumbbell|goblet|farmer|hammer curl|concentration curl/i.test(name)) return "dumbbell";
+  // A backpack or a water jug is a free weight too.
+  if (/dumbbell|goblet|farmer|hammer curl|concentration curl|backpack|water|jug/i.test(name)) return "dumbbell";
   return "other";
 }
 
@@ -415,7 +453,9 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
     split = null;
     runDay = null;
   }
-  if (split && coach.mainSwap?.[split.key] && !TARGETS[target]) split = { ...split, slots: [coach.mainSwap[split.key], ...split.slots.slice(1)] };
+  if (split && coach.mainSwap?.[split.key] && !TARGETS[target] && gym !== "outdoor") split = { ...split, slots: [coach.mainSwap[split.key], ...split.slots.slice(1)] };
+  // Outdoors & home: the same day, with no-gym exercises.
+  if (split && gym === "outdoor") split = { ...split, slots: OUTDOOR[split.key] ?? split.slots };
   const ctx = { plan, split, window, gym, shotSoon };
   const sources = coach.sources;
   const base = { day: DAY_NAMES[day], window, aim: plan, trainer: coachKey, sources };
@@ -472,7 +512,8 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
     const main = i === 0;
     let { sets, reps, rest } = main && !split.small ? scheme.main : scheme.accessory;
     if (main) sets = scheme.main.sets;
-    reps = choice.reps ?? split.reps ?? reps;
+    // Bodyweight work needs more reps than gym weights to be a workout.
+    reps = choice.reps ?? split.reps ?? (gym === "outdoor" ? (main ? "10–15" : "12–20") : reps);
     rest = split.rest ?? rest;
     return { name: choice.name, sets, reps, rest, alternative, main };
   });
@@ -488,7 +529,9 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
 
   // A run day's run replaces the cardio after lifting.
   const [runMinutes, runText, runMet] = runDay ? runDay.run(ctx) : [0, null, 0];
-  const [cardioMinutes, cardioText, cardioMet] = runDay || mode === "strength" ? [0, null, 0] : coach.cardio?.(ctx) ?? cardio(plan, split, window);
+  const [cardioMinutes, cardioText, cardioMet] = runDay || mode === "strength" ? [0, null, 0]
+    : gym === "outdoor" && coachKey !== "marathon" ? outdoorCardio({ plan, coachKey, split, window, shotSoon })
+    : coach.cardio?.(ctx) ?? cardio(plan, split, window);
   for (const e of exercises) {
     e.minutes = e.main && !split.small ? 12 : superset ? 5 : 7;
     e.met = superset ? MET.circuit : MET.lifting;
@@ -497,7 +540,7 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
   const minutes = (exercises.length ? 8 : 0) + liftMinutes + cardioMinutes + runMinutes;
   const warmupText = runDay
     ? `5 min brisk walk, then leg swings and a few 20-second strides.${exercises.length ? " After the run, 1 light set of each lift is enough." : ""}`
-    : warmup(window, exercises[0].name);
+    : warmup(window, exercises[0].name, gym);
   const warmupMinutes = runDay || window.key !== "early" ? 5 : 8;
 
   // Everything to lock in, in order, each with its minutes and MET for the
@@ -510,7 +553,12 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
   ];
 
   // The time-of-day note is about lifting, so a run-only day skips it.
-  const notes = [...(split ? [window.note] : []), ...(coach.notes?.(ctx) ?? [scheme.tip])];
+  // The time-of-day notes are about how busy a gym is; outdoors gets its own.
+  const placeNote = gym !== "outdoor" ? window.note
+    : window.key === "early" || window.key === "late" || window.key === "evening" ? "If it's dark out, stick to well-lit paths, or do the workout at home."
+    : "A park bench, a patch of grass and a backpack with a few books in it are all the gym you need.";
+  const tip = gym === "outdoor" ? OUTDOOR_TIPS[plan] : scheme.tip;
+  const notes = [...(split ? [placeNote] : []), ...(coach.notes?.(ctx) ?? [tip])];
   if (window.key === "late" && gym === "pf") notes.push("Many Planet Fitness clubs aren't open 24 hours anymore, so check your club's hours.");
 
   return {

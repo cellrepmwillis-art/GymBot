@@ -161,3 +161,8 @@ test("an unexpected rest day worked out anyway", () => {
   locked[OCT(21)].streakBreak = true;
   assert.equal(streak(locked, OCT(21), 0), 3);
 });
+
+test("outdoors, the weekly badges say worked out, not hit the gym", () => {
+  const locked = { [OCT(19)]: { gym: true }, [OCT(20)]: { gym: true }, [OCT(21)]: { gym: true }, [OCT(22)]: { gym: true } };
+  assert.deepEqual(weeklyBadges({ locked, today: OCT(22), restDay: 0, outdoor: true }).badges.map((b) => b.text), ["You worked out four days this week. Certified Park Rat."]);
+});

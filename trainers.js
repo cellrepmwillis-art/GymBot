@@ -86,7 +86,8 @@ export const TRAINERS = {
     notes: (ctx) => [
       "Warm up the main lift in steps: empty bar, then about 50%, 70% and 85% of your working weight.",
       "Stop each heavy set with 1–2 good reps left. Form breaking down means the set is over.",
-      ...(ctx.gym === "pf" ? ["Planet Fitness style gyms don't have barbells for squats or deadlifts. For real powerlifting training, switch Gym to Anytime Fitness style in Settings."] : []),
+      ...(ctx.gym === "pf" ? ["Planet Fitness style gyms don't have barbells for squats or deadlifts. For real powerlifting training, switch Gym to Anytime Fitness style."] : []),
+      ...(ctx.gym === "outdoor" ? ["Outdoors, the main lifts are bodyweight versions. For real powerlifting you'll want a gym with barbells."] : []),
     ],
   },
 

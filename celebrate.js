@@ -165,16 +165,17 @@ export function weekStats(locked, today, restDay) {
   return stats;
 }
 
+// [days, id, icon, message at a gym, message outdoors & at home]
 const GYM_TIERS = [
-  [5, "gym5", "🦾", "Five gym days this week. Certified Iron Addict."],
-  [4, "gym4", "🐀", "You hit the gym four days this week. Certified Gym Rat."],
-  [3, "gym3", "🏅", "Three gym days this week. Certified Regular."],
-  [2, "gym2", "🏅", "Looks like you managed to hit the gym twice this week. Certified Maintainer."],
+  [5, "gym5", "🦾", "Five gym days this week. Certified Iron Addict.", "Five workout days this week. Certified Iron Addict."],
+  [4, "gym4", "🐀", "You hit the gym four days this week. Certified Gym Rat.", "You worked out four days this week. Certified Park Rat."],
+  [3, "gym3", "🏅", "Three gym days this week. Certified Regular.", "Three workout days this week. Certified Regular."],
+  [2, "gym2", "🏅", "Looks like you managed to hit the gym twice this week. Certified Maintainer.", "Looks like you managed to work out twice this week. Certified Maintainer."],
 ];
 
 // Weekly goals reached and not yet celebrated this week. `awarded` lists the
 // ones already celebrated; returns the new badges and the updated list.
-export function weeklyBadges({ locked, today, restDay, awarded = [] }) {
+export function weeklyBadges({ locked, today, restDay, awarded = [], outdoor = false }) {
   const stats = weekStats(locked, today, restDay);
   const badges = [];
   const got = new Set(awarded);
@@ -186,7 +187,7 @@ export function weeklyBadges({ locked, today, restDay, awarded = [] }) {
   // Only the highest new gym tier; the lower ones count as reached.
   const tier = GYM_TIERS.find(([days]) => stats.gymDays >= days);
   if (tier && !got.has(tier[1])) {
-    award(tier[1], tier[2], tier[3]);
+    award(tier[1], tier[2], outdoor ? tier[4] : tier[3]);
     for (const [days, id] of GYM_TIERS) if (days < tier[0]) got.add(id);
   }
   if (stats.strengthDays >= STRENGTH_DAYS) {

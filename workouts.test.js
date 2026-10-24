@@ -274,7 +274,7 @@ test("marathon lifting starts with free weights", () => {
 
 test("every exercise cycles through three different choices at either gym", () => {
   let checked = 0;
-  for (const gym of ["pf", "af"]) for (let d = 0; d < 7; d++) for (const target of [null, ...Object.keys(TARGETS)]) for (const trainer of ["none", "bodybuilder", "powerlifter", "marathon", "weightLoss", "glp1"]) {
+  for (const gym of ["pf", "af", "outdoor"]) for (let d = 0; d < 7; d++) for (const target of [null, ...Object.keys(TARGETS)]) for (const trainer of ["none", "bodybuilder", "powerlifter", "marathon", "weightLoss", "glp1"]) {
     const args = { date: at(d, 10), gym, target, trainer };
     const w = suggest(args);
     if (w.rest) continue;
@@ -324,4 +324,28 @@ test("an unexpected rest day has nothing to lock", () => {
   assert.deepEqual(w.items, []);
   // The scheduled rest day keeps its stretches.
   assert.equal(suggest({ date: at(6, 10) }).items.length, 7);
+});
+
+test("outdoors & home uses no gym equipment", () => {
+  const gymWords = /machine|cable|smith|barbell|dumbbell|treadmill|elliptical|stairmaster|rower|bike|pec deck|leg press|(?<!band )lat pulldown/i;
+  let checked = 0;
+  for (let d = 0; d < 7; d++) for (const target of [null, ...Object.keys(TARGETS)]) for (const trainer of ["none", "bodybuilder", "powerlifter", "weightLoss", "glp1"]) for (const aim of ["gain", "maintain", "cut"]) for (const mode of [null, "cardio", "strength"]) for (const hour of [7, 10, 12, 21]) {
+    const w = suggest({ date: at(d, hour), gym: "outdoor", target, trainer, aim, mode });
+    for (const item of w.items) {
+      const text = `${item.name} ${item.text ?? ""} ${item.alternative ?? ""}`;
+      assert.doesNotMatch(text, gymWords, `${d} ${target} ${trainer} ${aim} ${mode}: ${text}`);
+      checked++;
+    }
+    for (const note of w.notes ?? []) assert.doesNotMatch(note, /benches and smith|gym is|planet fitness clubs/i, note);
+  }
+  assert.ok(checked > 10000);
+  const monday = suggest({ date: at(0, 10), gym: "outdoor", aim: "cut" });
+  assert.equal(monday.exercises[0].name, "Push-up");
+  assert.equal(monday.exercises[0].reps, "10–15");
+  assert.equal(monday.exercises[1].reps, "12–20");
+  assert.equal(suggest({ date: at(2, 10), gym: "outdoor" }).exercises[5].reps, "30–60 sec"); // plank
+  assert.ok(monday.notes.some((n) => /Lower slowly/.test(n)));
+  assert.match(monday.warmup, /easy walk/);
+  assert.match(monday.cardio, /brisk walk/);
+  assert.match(suggest({ date: at(0, 10), gym: "outdoor", mode: "cardio" }).cardio, /^45 min brisk walk at the park/);
 });
