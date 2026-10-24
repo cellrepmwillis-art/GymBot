@@ -5,7 +5,7 @@ import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-25 · 1:30 PM";
+const VERSION = "2026-10-25 · 4:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -999,10 +999,6 @@ function closeCelebration() {
   $("celebrate").hidden = true;
 }
 $("celebrate-close").addEventListener("click", closeCelebration);
-$("celebrate-lock-out").addEventListener("click", () => {
-  closeCelebration();
-  lockOut();
-});
 
 // A few seconds of falling confetti in the theme's colors. Skipped for
 // people who ask for reduced motion.

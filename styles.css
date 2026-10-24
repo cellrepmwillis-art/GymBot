@@ -289,7 +289,7 @@ main[hidden], .dock[hidden] { display: none; }
 .badges:empty { display: none; }
 .badges li { display: grid; grid-template-columns: 32px 1fr; gap: 8px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--accent-soft); font-weight: 600; }
 .badge-icon { font-size: 1.4rem; text-align: center; }
-.celebrate-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
+.celebrate-actions { display: grid; gap: 10px; margin-top: 18px; }
 .celebrate-actions button { padding: 14px; border-radius: 12px; font-size: 1.05rem; }
 @keyframes pop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .celebrate-card { animation: none; } }
@@ -379,3 +379,4 @@ main[hidden], .dock[hidden] { display: none; }
 
 .routine-part { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--muted); white-space: nowrap; }
 .routine-part select { width: auto; padding: 6px 8px; }
+.routine-part[hidden] { display: none; }
