@@ -310,6 +310,4 @@ main[hidden], .dock[hidden] { display: none; }
 .verdict[data-tone="neutral"] .chip { background: var(--track); color: var(--muted); }
 .verdict-headline { font-weight: 700; margin: 8px 0 4px; }
 .verdict .small { margin: 0; }
-#weigh-reset { margin-top: 10px; }
-#weigh-reset[hidden] { display: none; }
 @media (prefers-color-scheme: dark) { .verdict[data-tone="warn"] .chip { color: #fbbf24; } .verdict[data-tone="bad"] .chip { color: #f87171; } }

@@ -4,7 +4,7 @@ import { celebrate, streak, level } from "./celebrate.js";
 import { analyzeWeight, daysBetween } from "./weight.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 1:00 PM";
+const VERSION = "2026-10-24 · 2:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -37,7 +37,8 @@ function load() {
   // the conversation as sent to the API and context the last workout
   // description sent with a question.
   // weighIns: [{ day, lb }] from Lock-In Weight, one a day, oldest first.
-  // weightStart: { day, lb } the weigh-ins are compared with. weightSetDay:
+  // weightStart: { day, lb } the latest weigh-in is compared with: the one
+  // before it, or the weight from Settings before the first. weightSetDay:
   // the day the weight in Settings was last changed.
   // achievements: { completeDays, fullWeeks, weeks: [week ids] }, the totals
   // behind the milestones (see celebrate.js). A lock's `complete` says every
@@ -262,9 +263,8 @@ function renderWeight() {
   const start = state.weightStart;
   $("weigh-input").placeholder = latest?.day === dayKey() ? `Logged ${latest.lb} lb today` : "Today's weight (lb)";
   if (!start || !latest) {
-    $("weigh-summary").textContent = "Log your weight once or twice a week, at the same time of day, to see how it's moving against your aim.";
+    $("weigh-summary").textContent = "Log your weight about once a week, at the same time of day. Each weigh-in is compared with the one before it.";
     $("weigh-verdict").hidden = true;
-    $("weigh-reset").hidden = true;
     return;
   }
   const result = start.day === latest.day ? null : analyzeWeight({ start, latest, aim: state.aim, trainer: state.trainer });
@@ -272,10 +272,9 @@ function renderWeight() {
   const change = latest.lb - start.lb;
   const moved = change === 0 ? "no change" : `${change < 0 ? "down" : "up"} ${Math.abs(change).toFixed(1)} lb`;
   $("weigh-summary").textContent = start.day === latest.day
-    ? `Starting at ${start.lb} lb on ${shortDate(start.day)}. Log again next week to see the trend.`
-    : `Started at ${start.lb} lb on ${shortDate(start.day)} · now ${latest.lb} lb · ${moved}${weeks >= 1 ? ` in ${weeks} ${weeks === 1 ? "week" : "weeks"}` : ""}`;
+    ? `Starting at ${start.lb} lb on ${shortDate(start.day)}. Log again next week to see how it's moving.`
+    : `Last weigh-in ${start.lb} lb on ${shortDate(start.day)} · now ${latest.lb} lb · ${moved}${weeks >= 1 ? ` in ${weeks} ${weeks === 1 ? "week" : "weeks"}` : ""}`;
   $("weigh-verdict").hidden = !result;
-  $("weigh-reset").hidden = start.day === latest.day;
   if (!result) return;
   $("weigh-verdict").dataset.tone = result.tone;
   $("weigh-label").textContent = result.label;
@@ -288,23 +287,16 @@ $("weigh-form").addEventListener("submit", (event) => {
   const lb = Math.round(Number($("weigh-input").value) * 10) / 10;
   if (!(lb >= 50 && lb <= 700)) return;
   const today = dayKey();
-  // The starting point: the weight from Settings, from the day it was set,
-  // or else this first weigh-in.
-  if (!state.weightStart) {
-    state.weightStart = state.weightLb > 0 ? { day: state.weightSetDay ?? today, lb: state.weightLb } : { day: today, lb };
-  }
+  // Compare with the last weigh-in from an earlier day (so fixing today's
+  // number keeps the comparison); before the first one, with the weight from
+  // Settings, or else this weigh-in itself.
+  const previous = state.weighIns.filter((w) => w.day !== today).at(-1);
+  if (previous) state.weightStart = { ...previous };
+  else if (!state.weightStart) state.weightStart = state.weightLb > 0 ? { day: state.weightSetDay ?? today, lb: state.weightLb } : { day: today, lb };
   state.weighIns = [...state.weighIns.filter((w) => w.day !== today), { day: today, lb }].slice(-400);
   // The latest weight is also what calories burned use.
   state.weightLb = lb;
   $("weigh-input").value = "";
-  save();
-  renderOptions();
-});
-
-$("weigh-reset").addEventListener("click", () => {
-  const latest = state.weighIns.at(-1);
-  if (!latest || !confirm(`Start over, comparing from now on with ${latest.lb} lb?`)) return;
-  state.weightStart = { ...latest };
   save();
   renderOptions();
 });
