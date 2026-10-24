@@ -4,7 +4,7 @@ import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weekly
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-25 · 1:00 AM";
+const VERSION = "2026-10-25 · 2:00 AM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -251,7 +251,10 @@ function renderOptions() {
 
   const target = todaysTarget();
   const today = workout(now, target);
-  $("now-split").textContent = today.rest
+  const todayLock = state.locked[dayKey(now)];
+  $("now-split").textContent = todayLock?.unexpectedRest && todayLock.mode === "rest"
+    ? `Today: unexpected rest day${target ? ` (${TARGET_LABELS[target]} if you work out anyway)` : ""}`
+    : today.rest
     ? "Today: rest day · stretching only"
     : `Today: ${displayName(today)}`;
 
@@ -414,13 +417,17 @@ $("lock-in").addEventListener("click", () => {
   const previous = state.locked[today];
   const focus = todaysTarget();
   const same = previous && (previous.focus ?? null) === focus;
+  // An unexpected rest day stays one whatever the focus: "Back to my rest
+  // day" goes back to it, and a focus picked meanwhile waits for "Work out
+  // anyway".
+  const resting = previous?.unexpectedRest && previous.mode === "rest";
   state.locked[today] = {
     at: Date.now(),
     focus,
     shuffle: same ? previous.shuffle ?? 0 : 0,
-    mode: same ? previous.mode ?? null : null,
-    unexpectedRest: same ? previous.unexpectedRest ?? false : false,
-    streakBreak: same ? previous.streakBreak ?? false : false,
+    mode: resting ? "rest" : same ? previous.mode ?? null : null,
+    unexpectedRest: previous?.unexpectedRest ?? false,
+    streakBreak: previous?.streakBreak ?? false,
     swaps: same ? previous.swaps ?? {} : {},
     done: same ? previous.done ?? [] : [],
     active: true,

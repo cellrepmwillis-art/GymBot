@@ -92,13 +92,13 @@ export function analyzeWeight({ start, latest, aim = "maintain", trainer = "none
 
   if (aim === "gain") {
     if (pct >= LEAN_GAIN) return result("warn", "Heads up", "Gaining fast.", "More than 0.5% of your body weight a week is likely more fat than muscle. Trim your calorie surplus a little.");
-    if (pct >= STEADY / 2) return result("good", "On track", "Gaining at a lean pace.", "About 0.25–0.5% a week is a lean bulk. Keep adding weight to the bar.");
+    if (pct >= STEADY / 2) return result("good", "On track", "Gaining at a lean pace.", "About 0.25–0.5% a week is healthy gain: mostly muscle, not much fat. Keep pushing your lifts.");
     if (pct > -STEADY) return result("warn", "Stalling", "Weight is holding steady on a gain.", "Muscle needs a calorie surplus. Add a snack or a bigger meal a day and keep pushing your lifts.");
     return result("bad", "Off track", "Losing weight on a gain.", "You're not eating enough to build muscle. Eat more, especially protein. Lock back in, champ.");
   }
 
   // Maintain
-  if (Math.abs(pct) < STEADY) return result("good", "On track", "Holding steady, as planned.", "Maintaining is the goal. If you want to see change, push your lifts harder or switch Aim to Cut or Gain.");
+  if (Math.abs(pct) < STEADY) return result("good", "On track", "Holding steady, as planned.", "Holding your weight while your lifts climb means you're trading fat for muscle. Keep pushing your lifts.");
   if (pct < 0) return result("warn", "Unexpected", "Losing weight while maintaining.", "If you didn't mean to, eat a little more. If you're happy losing, switch Aim to Cut.");
   return result("warn", "Unexpected", "Gaining weight while maintaining.", "If you didn't mean to, trim portions a little or add some cardio. If you're building muscle on purpose, switch Aim to Gain.");
 }

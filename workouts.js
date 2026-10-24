@@ -12,28 +12,31 @@ import { OUTDOOR } from "./outdoor.js";
 export { TRAINERS };
 export { MET, caloriesBurned } from "./met.js";
 
-// Aims match CookBot's Settings: "gain", "maintain" or "cut".
+// Aims match CookBot's Settings: "gain", "maintain" or "cut". All three
+// build muscle; they differ in what body weight does: cut loses fat while
+// keeping and building muscle, maintain holds weight while building muscle
+// (recomposition), and gain adds healthy mass and muscle.
 export const AIMS = {
   gain: {
     label: "Gain",
-    blurb: "Heavier main lift, more sets, little cardio.",
+    blurb: "Gain healthy mass and muscle: a heavier main lift, more sets, little cardio, and a small calorie surplus.",
     main: { sets: 4, reps: "6–8", rest: "2–3 min" },
     accessory: { sets: 3, reps: "8–12", rest: "90 sec" },
     tip: "Beat last week: one more rep or a little more weight on each lift.",
   },
   maintain: {
     label: "Maintain",
-    blurb: "Moderate volume plus some cardio.",
+    blurb: "Keep your weight steady while building muscle: keep adding reps or weight, with some cardio for your heart.",
     main: { sets: 3, reps: "8–10", rest: "2 min" },
     accessory: { sets: 3, reps: "10–12", rest: "75 sec" },
-    tip: "Keep the weights about the same and focus on clean reps.",
+    tip: "Your weight stays steady, but your lifts shouldn't: add a rep or a little weight when you can. That's how you build muscle without gaining.",
   },
   cut: {
     label: "Cut",
-    blurb: "Keep the main lift heavy to hold muscle, shorter rests, more cardio.",
+    blurb: "Lose fat while keeping and building muscle: the main lift stays heavy, with shorter rests and more cardio.",
     main: { sets: 3, reps: "6–8", rest: "2 min" },
     accessory: { sets: 3, reps: "12–15", rest: "45–60 sec" },
-    tip: "Try to keep the weight on your main lift. Losing a rep or two on a cut is normal.",
+    tip: "Keep the weight on your main lift: it tells your body to hold on to muscle while you lose fat. Losing a rep or two on a cut is normal.",
   },
 };
 
@@ -302,7 +305,7 @@ function warmup(window, first, gym) {
 // The aims' tips, for bodyweight work.
 const OUTDOOR_TIPS = {
   gain: "Beat last week: a rep or two more on each exercise, or move to the harder swap.",
-  maintain: "Keep the reps about the same and focus on clean form.",
+  maintain: "Weight steady, reps climbing: add a rep or two, or move to the harder swap, when you can.",
   cut: "Keep your reps up on the first exercise. Too easy? Lower slowly, over 3 seconds.",
 };
 
