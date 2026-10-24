@@ -53,9 +53,9 @@ const SPLITS = {
     title: "Push A",
     focus: "Chest, shoulders and triceps (chest first)",
     slots: [
-      [B("Barbell bench press"), E("Smith machine bench press"), E("Dumbbell bench press")],
+      [B("Barbell bench press"), E("Smith machine bench press"), E("Dumbbell bench press"), E("Chest press machine")],
       [E("Incline dumbbell press"), E("Smith machine incline press"), E("Incline chest press machine")],
-      [E("Seated dumbbell shoulder press"), E("Shoulder press machine")],
+      [E("Seated dumbbell shoulder press"), E("Shoulder press machine"), E("Smith machine shoulder press")],
       [E("Cable fly"), E("Pec deck"), E("Dumbbell fly")],
       [E("Dumbbell lateral raise"), E("Cable lateral raise"), E("Lateral raise machine")],
       [E("Cable rope pushdown"), E("Overhead dumbbell triceps extension"), E("Assisted dip machine")],
@@ -65,23 +65,23 @@ const SPLITS = {
     title: "Pull A",
     focus: "Back and biceps (back width first)",
     slots: [
-      [E("Lat pulldown"), E("Assisted pull-up machine")],
-      [E("Seated cable row"), E("Seated row machine")],
+      [E("Lat pulldown"), E("Assisted pull-up machine"), E("Single-arm cable lat pulldown")],
+      [E("Seated cable row"), E("Seated row machine"), E("Smith machine bent-over row")],
       [E("Chest-supported dumbbell row"), E("Single-arm dumbbell row"), E("Plate-loaded row machine")],
-      [E("Cable face pull"), E("Rear delt fly machine")],
+      [E("Cable face pull"), E("Rear delt fly machine"), E("Bent-over dumbbell reverse fly")],
       [E("Dumbbell curl"), E("Cable curl"), E("Biceps curl machine")],
-      [E("Hammer curl"), E("Cable rope hammer curl")],
+      [E("Hammer curl"), E("Cable rope hammer curl"), E("Biceps curl machine (neutral grip)")],
     ],
   },
   legsA: {
     title: "Legs A",
     focus: "Quads, hamstrings, calves and abs (squat first)",
     slots: [
-      [B("Barbell back squat"), E("Smith machine squat"), E("Leg press")],
+      [B("Barbell back squat"), E("Smith machine squat"), E("Leg press"), E("Hack squat machine")],
       [E("Leg press"), E("Hack squat machine"), E("Goblet squat")],
-      [E("Leg extension"), E("Dumbbell walking lunge")],
-      [E("Lying leg curl"), E("Seated leg curl")],
-      [E("Standing calf raise (Smith machine)"), E("Calf press on the leg press")],
+      [E("Leg extension"), E("Dumbbell walking lunge"), E("Dumbbell step-up onto a bench")],
+      [E("Lying leg curl"), E("Seated leg curl"), E("Cable hamstring curl (ankle strap)")],
+      [E("Standing calf raise (Smith machine)"), E("Calf press on the leg press"), E("Seated calf raise")],
       [E("Cable crunch"), E("Hanging knee raise"), E("Ab crunch machine")],
     ],
   },
@@ -89,11 +89,11 @@ const SPLITS = {
     title: "Push B",
     focus: "Shoulders, chest and triceps (shoulders first)",
     slots: [
-      [B("Standing barbell overhead press"), E("Smith machine shoulder press"), E("Seated dumbbell shoulder press")],
+      [B("Standing barbell overhead press"), E("Smith machine shoulder press"), E("Seated dumbbell shoulder press"), E("Standing dumbbell shoulder press")],
       [E("Chest press machine"), E("Dumbbell bench press"), E("Smith machine bench press")],
-      [E("Incline dumbbell press"), E("Incline chest press machine")],
+      [E("Incline dumbbell press"), E("Incline chest press machine"), E("Smith machine incline press")],
       [E("Cable lateral raise"), E("Dumbbell lateral raise"), E("Lateral raise machine")],
-      [E("Pec deck"), E("Cable fly")],
+      [E("Pec deck"), E("Cable fly"), E("Dumbbell fly")],
       [E("Overhead cable triceps extension"), E("Dumbbell skull crusher"), E("Triceps extension machine")],
     ],
   },
@@ -101,24 +101,24 @@ const SPLITS = {
     title: "Pull B",
     focus: "Back, rear delts and biceps (back thickness first)",
     slots: [
-      [B("Barbell bent-over row"), E("Single-arm dumbbell row"), E("Plate-loaded row machine")],
-      [E("Assisted pull-up machine"), E("Lat pulldown (close grip)")],
-      [E("Straight-arm cable pulldown"), E("Dumbbell pullover")],
-      [E("Rear delt fly machine"), E("Bent-over dumbbell reverse fly")],
-      [E("Preacher curl machine"), E("Incline dumbbell curl")],
-      [E("Back extension"), E("Cable pull-through")],
+      [B("Barbell bent-over row"), E("Single-arm dumbbell row"), E("Plate-loaded row machine"), E("Chest-supported row machine")],
+      [E("Assisted pull-up machine"), E("Lat pulldown (close grip)"), E("Single-arm cable lat pulldown")],
+      [E("Straight-arm cable pulldown"), E("Dumbbell pullover"), E("Cable rope pullover")],
+      [E("Rear delt fly machine"), E("Bent-over dumbbell reverse fly"), E("Chest-supported dumbbell reverse fly")],
+      [E("Preacher curl machine"), E("Incline dumbbell curl"), E("Cable curl")],
+      [E("Back extension"), E("Cable pull-through"), E("Lower back extension machine")],
     ],
   },
   legsB: {
     title: "Legs B",
-    focus: "Hamstrings, glutes, quads and core (hinge first)",
+    focus: "Hamstrings, glutes, quads and calves (hinge first)",
     slots: [
-      [B("Barbell Romanian deadlift"), E("Smith machine Romanian deadlift"), E("Dumbbell Romanian deadlift")],
+      [B("Barbell Romanian deadlift"), E("Smith machine Romanian deadlift"), E("Dumbbell Romanian deadlift"), E("Cable pull-through")],
       [E("Leg press (feet high)"), E("Hack squat machine"), E("Smith machine squat")],
-      [E("Dumbbell Bulgarian split squat"), E("Dumbbell reverse lunge")],
-      [E("Seated leg curl"), E("Lying leg curl")],
+      [E("Dumbbell Bulgarian split squat"), E("Dumbbell reverse lunge"), E("Smith machine split squat")],
+      [E("Seated leg curl"), E("Lying leg curl"), E("Cable hamstring curl (ankle strap)")],
       [E("Hip thrust (Smith machine)"), E("Glute kickback machine"), E("Hip abduction machine")],
-      [E("Seated calf raise"), E("Plank", "30–60 sec")],
+      [E("Seated calf raise"), E("Calf press on the leg press"), E("Standing calf raise (Smith machine)")],
     ],
   },
 };
@@ -131,36 +131,36 @@ export const TARGETS = {
     title: "Chest day",
     focus: "Flat, incline and fly work",
     slots: [
-      [B("Barbell bench press"), E("Smith machine bench press"), E("Dumbbell bench press")],
+      [B("Barbell bench press"), E("Smith machine bench press"), E("Dumbbell bench press"), E("Chest press machine")],
       [E("Incline dumbbell press"), E("Smith machine incline press"), E("Incline chest press machine")],
-      [E("Chest press machine"), E("Dumbbell bench press")],
+      [E("Chest press machine"), E("Dumbbell bench press"), E("Cable chest press")],
       [E("Pec deck"), E("Cable fly"), E("Dumbbell fly")],
-      [E("Low-to-high cable fly"), E("Incline dumbbell fly")],
-      [E("Push-up", "as many as you can"), E("Assisted dip machine")],
+      [E("Low-to-high cable fly"), E("Incline dumbbell fly"), E("Single-arm cable fly")],
+      [E("Push-up", "as many as you can"), E("Assisted dip machine"), E("Dumbbell squeeze press")],
     ],
   },
   back: {
     title: "Back day",
     focus: "Width, thickness and lower back",
     slots: [
-      [E("Lat pulldown"), E("Assisted pull-up machine")],
-      [B("Barbell bent-over row"), E("Single-arm dumbbell row"), E("Plate-loaded row machine")],
-      [E("Seated cable row"), E("Seated row machine")],
-      [E("Chest-supported dumbbell row"), E("Lat pulldown (close grip)")],
-      [E("Straight-arm cable pulldown"), E("Dumbbell pullover")],
-      [E("Back extension"), E("Cable pull-through")],
+      [E("Lat pulldown"), E("Assisted pull-up machine"), E("Single-arm cable lat pulldown")],
+      [B("Barbell bent-over row"), E("Single-arm dumbbell row"), E("Plate-loaded row machine"), E("Chest-supported row machine")],
+      [E("Seated cable row"), E("Seated row machine"), E("Smith machine bent-over row")],
+      [E("Chest-supported dumbbell row"), E("Lat pulldown (close grip)"), E("Seated row machine (wide grip)")],
+      [E("Straight-arm cable pulldown"), E("Dumbbell pullover"), E("Cable rope pullover")],
+      [E("Back extension"), E("Cable pull-through"), E("Lower back extension machine")],
     ],
   },
   shoulders: {
     title: "Shoulder day",
     focus: "Front, side and rear delts, plus traps",
     slots: [
-      [B("Standing barbell overhead press"), E("Smith machine shoulder press"), E("Seated dumbbell shoulder press")],
-      [E("Shoulder press machine"), E("Dumbbell Arnold press")],
+      [B("Standing barbell overhead press"), E("Smith machine shoulder press"), E("Seated dumbbell shoulder press"), E("Standing dumbbell shoulder press")],
+      [E("Shoulder press machine"), E("Dumbbell Arnold press"), E("Cable shoulder press")],
       [E("Dumbbell lateral raise"), E("Cable lateral raise"), E("Lateral raise machine")],
-      [E("Rear delt fly machine"), E("Bent-over dumbbell reverse fly")],
-      [E("Cable face pull"), E("Cable rear delt fly")],
-      [E("Dumbbell shrug"), E("Smith machine shrug")],
+      [E("Rear delt fly machine"), E("Bent-over dumbbell reverse fly"), E("Chest-supported dumbbell reverse fly")],
+      [E("Cable face pull"), E("Cable rear delt fly"), E("Dumbbell rear delt row")],
+      [E("Dumbbell shrug"), E("Smith machine shrug"), E("Cable shrug")],
     ],
   },
   biceps: {
@@ -168,12 +168,12 @@ export const TARGETS = {
     focus: "Curls from every angle, plus forearms",
     small: true,
     slots: [
-      [B("Barbell curl"), E("Dumbbell curl"), E("Cable curl")],
-      [E("Preacher curl machine"), E("Dumbbell preacher curl")],
-      [E("Incline dumbbell curl"), E("Cable curl (behind the body)")],
-      [E("Hammer curl"), E("Cable rope hammer curl")],
-      [E("Biceps curl machine"), E("Concentration curl")],
-      [E("Dumbbell wrist curl"), E("Farmer's carry", "40–60 sec")],
+      [B("Barbell curl"), E("Dumbbell curl"), E("Cable curl"), E("Fixed-weight EZ-bar curl")],
+      [E("Preacher curl machine"), E("Dumbbell preacher curl"), E("Cable preacher curl")],
+      [E("Incline dumbbell curl"), E("Cable curl (behind the body)"), E("Dumbbell spider curl")],
+      [E("Hammer curl"), E("Cable rope hammer curl"), E("Biceps curl machine (neutral grip)")],
+      [E("Biceps curl machine"), E("Concentration curl"), E("Single-arm cable curl")],
+      [E("Dumbbell wrist curl"), E("Farmer's carry", "40–60 sec"), E("Cable wrist curl")],
     ],
   },
   triceps: {
@@ -181,24 +181,24 @@ export const TARGETS = {
     focus: "Pressing, pushdowns and overhead work",
     small: true,
     slots: [
-      [B("Close-grip barbell bench press"), E("Close-grip Smith machine bench press"), E("Close-grip dumbbell press")],
-      [E("Assisted dip machine"), E("Triceps dip machine")],
-      [E("Cable rope pushdown"), E("Straight-bar cable pushdown")],
-      [E("Overhead cable triceps extension"), E("Overhead dumbbell triceps extension")],
-      [E("Dumbbell skull crusher"), E("Triceps extension machine")],
-      [E("Single-arm cable kickback"), E("Dumbbell kickback")],
+      [B("Close-grip barbell bench press"), E("Close-grip Smith machine bench press"), E("Close-grip dumbbell press"), E("Diamond push-up", "as many as you can")],
+      [E("Assisted dip machine"), E("Triceps dip machine"), E("Bench dip", "as many as you can")],
+      [E("Cable rope pushdown"), E("Straight-bar cable pushdown"), E("Reverse-grip cable pushdown")],
+      [E("Overhead cable triceps extension"), E("Overhead dumbbell triceps extension"), E("Single-arm overhead dumbbell extension")],
+      [E("Dumbbell skull crusher"), E("Triceps extension machine"), E("Cable skull crusher")],
+      [E("Single-arm cable kickback"), E("Dumbbell kickback"), E("Triceps press machine")],
     ],
   },
   legs: {
     title: "Leg day",
     focus: "Quads, hamstrings, glutes and calves",
     slots: [
-      [B("Barbell back squat"), E("Smith machine squat"), E("Leg press")],
-      [B("Barbell Romanian deadlift"), E("Smith machine Romanian deadlift"), E("Dumbbell Romanian deadlift")],
+      [B("Barbell back squat"), E("Smith machine squat"), E("Leg press"), E("Hack squat machine")],
+      [B("Barbell Romanian deadlift"), E("Smith machine Romanian deadlift"), E("Dumbbell Romanian deadlift"), E("Cable pull-through")],
       [E("Leg press"), E("Hack squat machine"), E("Dumbbell Bulgarian split squat")],
-      [E("Lying leg curl"), E("Seated leg curl")],
-      [E("Leg extension"), E("Dumbbell walking lunge")],
-      [E("Standing calf raise (Smith machine)"), E("Seated calf raise")],
+      [E("Lying leg curl"), E("Seated leg curl"), E("Cable hamstring curl (ankle strap)")],
+      [E("Leg extension"), E("Dumbbell walking lunge"), E("Dumbbell step-up onto a bench")],
+      [E("Standing calf raise (Smith machine)"), E("Seated calf raise"), E("Calf press on the leg press")],
     ],
   },
   abs: {
@@ -208,12 +208,12 @@ export const TARGETS = {
     reps: "12–20",
     rest: "45 sec",
     slots: [
-      [E("Cable crunch"), E("Ab crunch machine")],
-      [E("Hanging knee raise"), E("Captain's chair knee raise")],
-      [E("Plank", "30–60 sec"), E("Dead bug")],
-      [E("Cable woodchop"), E("Dumbbell Russian twist")],
-      [E("Reverse crunch"), E("Decline bench sit-up")],
-      [E("Side plank", "30 sec each side"), E("Dumbbell side bend")],
+      [E("Cable crunch"), E("Ab crunch machine"), E("Weighted crunch (dumbbell on the chest)")],
+      [E("Hanging knee raise"), E("Captain's chair knee raise"), E("Lying leg raise")],
+      [E("Plank", "30–60 sec"), E("Dead bug"), E("Bird dog")],
+      [E("Cable woodchop"), E("Dumbbell Russian twist"), E("Cable Pallof press")],
+      [E("Reverse crunch"), E("Decline bench sit-up"), E("Bicycle crunch")],
+      [E("Side plank", "30 sec each side"), E("Dumbbell side bend"), E("Cable side bend")],
     ],
   },
 };
@@ -296,6 +296,45 @@ function warmup(window, first) {
   return `${minutes} min easy on the bike or treadmill, then 2 light sets of ${name}.`;
 }
 
+// The "Cardio only" override: a warm-up and one longer cardio session in
+// place of the lifting. On a run day it's the run by itself.
+function cardioOnly({ base, coachKey, plan, window, gym, shotSoon, runDay, ctx, split, target }) {
+  const long = window.budget >= 6 ? 45 : 30;
+  let session;
+  if (runDay) session = runDay.run(ctx);
+  else if (coachKey === "marathon") session = [long, `Easy run, ${long} min, at a pace you could talk at.`, MET.easyRun];
+  else if (coachKey === "glp1") session = shotSoon
+    ? [20, "Easy 20 min walk. Skip it if you feel sick.", MET.easyWalk]
+    : [long, `${long} min brisk walk or bike at a pace you can still talk at.`, MET.briskWalk];
+  else if (plan === "cut" || coachKey === "weightLoss") session = [long, `${long} min incline treadmill walk (10–12% incline, about 3 mph). Split it with the StairMaster or bike if you like.`, MET.inclineWalk];
+  else session = [long, `${long} min of steady cardio: mix the bike, elliptical and rower at a pace that's hard but lets you talk.`, MET.moderateMachine];
+  const [minutes, text, met] = session;
+  const warmupText = runDay ? "5 min brisk walk, then leg swings and a few 20-second strides." : "5 min easy on the bike or treadmill, building up to your cardio pace.";
+  const items = [
+    { id: "warmup", kind: "warmup", name: "Warm-up", text: warmupText, minutes: 5, met: MET.warmup },
+    { id: runDay ? "run" : "cardio", kind: runDay ? "run" : "cardio", name: runDay ? runDay.title.split(" + ")[0] : "Cardio", text, minutes, met },
+  ];
+  const notes = ["Cardio only today, by your choice. Tomorrow is back to the full plan."];
+  if (window.key === "late" && gym === "pf") notes.push("Many Planet Fitness clubs aren't open 24 hours anymore, so check your club's hours.");
+  return {
+    ...base,
+    rest: false,
+    mode: "cardio",
+    split: split?.key ?? null,
+    target: TARGETS[target] ? target : null,
+    title: "Cardio only",
+    focus: "Cardio only",
+    minutes: Math.round((5 + minutes) / 5) * 5,
+    run: runDay ? text : null,
+    warmup: warmupText,
+    items,
+    exercises: [],
+    superset: false,
+    cardio: runDay ? null : text,
+    notes,
+  };
+}
+
 const pick = (options, i) => options[((i % options.length) + options.length) % options.length];
 
 // Sets, reps and rest from the aim, with the trainer's changes on top.
@@ -335,7 +374,8 @@ export function equipmentRank(name) {
   return { machine: 0, smith: 0, dumbbell: 1, barbell: 1 }[equipmentKind(name)] ?? 2;
 }
 
-// The most choices an exercise cycles through when swapped.
+// The most choices an exercise cycles through when swapped. Every exercise
+// has at least this many at either kind of gym.
 const MAX_CHOICES = 3;
 
 // The workout for `date`. `shuffle` moves every exercise to its next choice,
@@ -344,11 +384,12 @@ const MAX_CHOICES = 3;
 // choices, the planned one first. With a trainer, the planned one is the
 // trainer's favorite kind of equipment and the rest follow its order;
 // without one, the plan's own pick comes first, then machine, free weight,
-// other. `target` is a body part from TARGETS
+// other. `mode` limits the day: "cardio" for cardio only, "strength" for
+// lifting only, or null for the full plan. `target` is a body part from TARGETS
 // instead of today's split. `trainer` is a key of TRAINERS, and `shotDay` the
 // weekday (Sunday is 0) of a weekly GLP-1 shot. `restDay` is the weekday off;
 // on it, without a target, this returns a rest day.
-export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, swaps = {}, target = null, trainer = "none", shotDay = null, restDay = 0 } = {}) {
+export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, swaps = {}, mode = null, target = null, trainer = "none", shotDay = null, restDay = 0 } = {}) {
   const plan = AIMS[aim] ? aim : "maintain";
   const coachKey = TRAINERS[trainer] ? trainer : "none";
   const coach = TRAINERS[coachKey];
@@ -358,11 +399,17 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
   const shot = shotDay === null || shotDay === "" ? null : Number(shotDay);
   const shotSoon = coachKey === "glp1" && shot !== null && (day === shot || day === (shot + 1) % 7);
   const off = Number(restDay) || 0;
-  const runDay = TARGETS[target] ? null : coach.runs?.[weekPosition(day, off)];
+  let runDay = TARGETS[target] ? null : coach.runs?.[weekPosition(day, off)];
   let split = null;
   if (TARGETS[target]) split = { key: target, ...TARGETS[target] };
   else if (runDay) split = runDay.split ? { key: runDay.split, ...splitByKey(runDay.split) } : null;
   else split = splitFor(day, off);
+  // Strength only on a run day drops the run; a run-only day lifts the
+  // standard plan's split for that day instead.
+  if (mode === "strength" && runDay) {
+    split ??= splitFor(day, off);
+    runDay = null;
+  }
   if (split && coach.mainSwap?.[split.key] && !TARGETS[target]) split = { ...split, slots: [coach.mainSwap[split.key], ...split.slots.slice(1)] };
   const ctx = { plan, split, window, gym, shotSoon };
   const sources = coach.sources;
@@ -387,6 +434,8 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
   }
 
 
+  if (mode === "cardio") return cardioOnly({ base, coachKey, plan, window, gym, shotSoon, runDay, ctx, split, target });
+
   const budget = Math.min(window.budget, coach.maxLifts ?? 6, shotSoon ? 4 : 6);
   const allowed = (option) => gym === "af" || !option.barbell;
   const slots = split ? split.slots.slice(0, budget).map((slot) => slot.filter(allowed)) : [];
@@ -403,7 +452,10 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
       others = preferred.filter((option) => option !== planned);
     } else {
       planned = pick(options, shuffle);
-      others = options.filter((option) => option !== planned).sort((a, b) => equipmentRank(a.name) - equipmentRank(b.name));
+      // Machine, then free weight, then other, one of each before any repeats.
+      const sorted = options.filter((option) => option !== planned).sort((a, b) => equipmentRank(a.name) - equipmentRank(b.name));
+      const firstOfKind = sorted.filter((option, k) => k === 0 || equipmentRank(option.name) !== equipmentRank(sorted[k - 1].name));
+      others = [...firstOfKind, ...sorted.filter((option) => !firstOfKind.includes(option))];
     }
     const choices = [planned, ...others].slice(0, MAX_CHOICES);
     const swapped = swaps[i] ?? 0;
@@ -428,7 +480,7 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
 
   // A run day's run replaces the cardio after lifting.
   const [runMinutes, runText, runMet] = runDay ? runDay.run(ctx) : [0, null, 0];
-  const [cardioMinutes, cardioText, cardioMet] = runDay ? [0, null, 0] : coach.cardio?.(ctx) ?? cardio(plan, split, window);
+  const [cardioMinutes, cardioText, cardioMet] = runDay || mode === "strength" ? [0, null, 0] : coach.cardio?.(ctx) ?? cardio(plan, split, window);
   for (const e of exercises) {
     e.minutes = e.main && !split.small ? 12 : superset ? 5 : 7;
     e.met = superset ? MET.circuit : MET.lifting;
@@ -458,6 +510,7 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
     rest: false,
     split: split?.key ?? null,
     target: TARGETS[target] ? target : null,
+    mode: mode === "strength" ? "strength" : null,
     title: runDay?.title ?? split.title,
     focus: runDay ? (split ? `Run, then ${split.focus.toLowerCase()}` : "Running only today") : split.focus,
     minutes: Math.round(minutes / 5) * 5,

@@ -28,12 +28,12 @@ export const RUNNER_LEGS = {
   title: "Runner's legs",
   focus: "Single-leg strength, hips and calves",
   slots: [
-    [E("Dumbbell Bulgarian split squat"), E("Dumbbell reverse lunge")],
-    [E("Single-leg dumbbell Romanian deadlift"), E("Dumbbell Romanian deadlift")],
-    [E("Dumbbell step-up onto a bench"), E("Single-leg leg press")],
-    [E("Standing calf raise (Smith machine)"), E("Single-leg dumbbell calf raise")],
-    [E("Hip abduction machine"), E("Cable hip abduction")],
-    [E("Side plank", "30 sec each side"), E("Dead bug")],
+    [E("Dumbbell Bulgarian split squat"), E("Dumbbell reverse lunge"), E("Smith machine split squat")],
+    [E("Single-leg dumbbell Romanian deadlift"), E("Dumbbell Romanian deadlift"), E("Cable pull-through")],
+    [E("Dumbbell step-up onto a bench"), E("Single-leg leg press"), E("Lateral step-up onto a bench")],
+    [E("Standing calf raise (Smith machine)"), E("Single-leg dumbbell calf raise"), E("Seated calf raise")],
+    [E("Hip abduction machine"), E("Cable hip abduction"), E("Side-lying leg raise")],
+    [E("Side plank", "30 sec each side"), E("Dead bug"), E("Bird dog")],
   ],
 };
 
@@ -79,7 +79,7 @@ export const TRAINERS = {
     maxLifts: 5,
     superset: "never",
     // Pull A starts with the deadlift, so the week has all three lifts.
-    mainSwap: { pullA: [B("Barbell deadlift"), E("Smith machine deadlift"), E("Dumbbell Romanian deadlift")] },
+    mainSwap: { pullA: [B("Barbell deadlift"), E("Smith machine deadlift"), E("Dumbbell Romanian deadlift"), E("Dumbbell deadlift")] },
     cardio: (ctx) => (ctx.plan === "cut"
       ? [15, "15 min incline treadmill walk. Keep it easy so it doesn't cut into your lifting.", MET.inclineWalk]
       : [10, "10 min easy walk or bike. Light cardio still helps your heart and recovery.", MET.easyWalk]),

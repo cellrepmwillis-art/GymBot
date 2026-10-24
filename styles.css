@@ -260,3 +260,6 @@ main[hidden], .dock[hidden] { display: none; }
 .backup-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
 #backup-status:empty { display: none; }
 .swap { color: var(--accent); font-weight: 600; font-size: inherit; text-align: left; text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 3px; }
+.overrides { display: grid; gap: 8px; margin-top: 14px; }
+.overrides[hidden] { display: none; }
+.overrides button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }

@@ -61,10 +61,9 @@ test("barbells only at Anytime Fitness style gyms", () => {
   }
 });
 
-test("shuffle moves to the next choice and offers a swap", () => {
+test("shuffle moves every exercise to its next planned choice", () => {
   const a = suggest({ date: at(0, 10), gym: "pf" });
   const b = suggest({ date: at(0, 10), gym: "pf", shuffle: 1 });
-  assert.equal(a.exercises[0].alternative, b.exercises[0].name);
   assert.notEqual(a.exercises[0].name, b.exercises[0].name);
 });
 
@@ -213,6 +212,8 @@ test("swapping an exercise cycles through up to three choices: planned, then mac
   const names = (swaps) => suggest({ date: at(0, 10), gym: "af", swaps }).exercises[0];
   // Push A's first exercise at an Anytime Fitness style gym.
   assert.equal(names({}).name, "Barbell bench press");
+  // Then a machine (the Smith machine), then a dumbbell: one of each kind
+  // before a second machine.
   assert.equal(names({}).alternative, "Smith machine bench press");
   assert.equal(names({ 0: 1 }).name, "Smith machine bench press");
   assert.equal(names({ 0: 1 }).alternative, "Dumbbell bench press");
@@ -221,11 +222,9 @@ test("swapping an exercise cycles through up to three choices: planned, then mac
   assert.equal(names({ 0: 3 }).name, "Barbell bench press");
   // Other exercises stay put.
   assert.equal(suggest({ date: at(0, 10), gym: "af", swaps: { 0: 1 } }).exercises[1].name, "Incline dumbbell press");
-  // Two choices just alternate.
+  // Hammer curl: machine, then the other (cable), then back.
   const curl = (swaps) => suggest({ date: at(1, 10), swaps }).exercises[5].name;
-  assert.equal(curl({}), "Hammer curl");
-  assert.equal(curl({ 5: 1 }), "Cable rope hammer curl");
-  assert.equal(curl({ 5: 2 }), "Hammer curl");
+  assert.deepEqual([0, 1, 2, 3].map((n) => curl({ 5: n })), ["Hammer curl", "Biceps curl machine (neutral grip)", "Cable rope hammer curl", "Hammer curl"]);
   // Machines come before free weights, free weights before the rest.
   const fly = suggest({ date: at(0, 10), swaps: {} }).exercises[3];
   assert.equal(fly.name, "Cable fly");
@@ -249,7 +248,7 @@ test("each trainer starts with its favorite equipment", () => {
   assert.equal(first("none", "af").name, "Barbell bench press");
   assert.equal(first("powerlifter", "af").name, "Barbell bench press");
   assert.equal(first("powerlifter", "pf").name, "Smith machine bench press");
-  assert.equal(first("glp1", "af").name, "Smith machine bench press");
+  assert.equal(first("glp1", "af").name, "Chest press machine");
   // Push A's fly: cable fly, pec deck or dumbbell fly.
   assert.equal(first("bodybuilder", "pf", 0, 3).name, "Cable fly");
   assert.equal(first("bodybuilder", "pf", 0, 3).alternative, "Pec deck");
@@ -271,4 +270,48 @@ test("equipment kinds", () => {
 test("marathon lifting starts with free weights", () => {
   // Monday's upper body after the easy run: Push A's chest press goes dumbbell.
   assert.equal(suggest({ date: at(0, 7), trainer: "marathon", gym: "af" }).exercises[0].name, "Dumbbell bench press");
+});
+
+test("every exercise cycles through three different choices at either gym", () => {
+  let checked = 0;
+  for (const gym of ["pf", "af"]) for (let d = 0; d < 7; d++) for (const target of [null, ...Object.keys(TARGETS)]) for (const trainer of ["none", "bodybuilder", "powerlifter", "marathon", "weightLoss", "glp1"]) {
+    const args = { date: at(d, 10), gym, target, trainer };
+    const w = suggest(args);
+    if (w.rest) continue;
+    w.exercises.forEach((_, i) => {
+      const seq = [0, 1, 2, 3].map((n) => suggest({ ...args, swaps: { [i]: n } }).exercises[i]);
+      const names = seq.map((e) => e.name);
+      assert.equal(new Set(names.slice(0, 3)).size, 3, `${gym} ${d} ${target} ${trainer} #${i}: ${names}`);
+      assert.equal(names[3], names[0]);
+      seq.forEach((e, k) => assert.equal(e.alternative, names[(k + 1) % 3]));
+      checked++;
+    });
+  }
+  assert.ok(checked > 1000);
+});
+
+test("cardio only and strength only overrides", () => {
+  const cardio = suggest({ date: at(0, 10), mode: "cardio", aim: "cut" });
+  assert.equal(cardio.mode, "cardio");
+  assert.deepEqual(cardio.items.map((i) => i.id), ["warmup", "cardio"]);
+  assert.equal(cardio.exercises.length, 0);
+  assert.match(cardio.cardio, /^45 min incline treadmill walk/);
+  assert.match(suggest({ date: at(0, 12), mode: "cardio" }).cardio, /^30 min of steady cardio/);
+
+  const strength = suggest({ date: at(0, 10), mode: "strength" });
+  assert.equal(strength.mode, "strength");
+  assert.equal(strength.cardio, null);
+  assert.ok(strength.items.every((i) => i.kind === "warmup" || i.kind === "lift"));
+  assert.equal(strength.exercises.length, 6);
+
+  // Marathon: cardio only on a lifting day is the run alone; strength only on
+  // a run-only day lifts that day's standard split.
+  const easy = suggest({ date: at(0, 7), trainer: "marathon", mode: "cardio" });
+  assert.deepEqual(easy.items.map((i) => i.id), ["warmup", "run"]);
+  const speed = suggest({ date: at(1, 10), trainer: "marathon", mode: "strength" });
+  assert.equal(speed.run, null);
+  assert.equal(speed.title, "Pull A");
+  // The rest day stays a rest day.
+  assert.equal(suggest({ date: at(6, 10), mode: "strength" }).rest, true);
+  assert.equal(suggest({ date: at(6, 10), mode: "cardio" }).rest, true);
 });

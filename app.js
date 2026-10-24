@@ -2,7 +2,7 @@ import { dayKey, previousDay, nextReset } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned } from "./workouts.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 9:00 AM";
+const VERSION = "2026-10-24 · 10:00 AM";
 const STORAGE_KEY = "gymbot";
 const KEEP_DAYS = 60;
 // Weight used for calories burned until one is entered.
@@ -13,13 +13,15 @@ const $ = (id) => document.getElementById(id);
 // ---- Storage (everything lives in this browser's localStorage) ----
 
 function load() {
-  // locked: { "2026-10-23": { at, shuffle, swaps, focus, done, active, burned } } for
+  // locked: { "2026-10-23": { at, shuffle, swaps, mode, focus, done, active, burned } } for
   // every day the Lock in button was pressed. `at` keeps the workout picked
   // for the time it was locked in, even if the app is opened again later.
   // `focus` is a body part picked instead of the split, `done` the ids of
   // the items locked so far, `active` whether the workout screen is open
   // (until Lock out) and `burned` the calories from the locked items.
-  // `swaps` counts taps on each exercise's "Taken?" swap, by position.
+  // `swaps` counts taps on each exercise's "Taken?" swap, by position, and
+  // `mode` is "cardio" or "strength" when an override limits the day.
+  // (`shuffle` is from the old "Different exercises" button.)
   // focus: { day, target }, the body part picked on the options screen. It
   // only applies to that day; the next day starts back on the split.
   // trainer: a key of TRAINERS (the "AI Trainer" setting); shotDay: the
@@ -78,13 +80,13 @@ function weight() {
 const todaysTarget = () => (state.focus?.day === dayKey() && TARGETS[state.focus.target] ? state.focus.target : null);
 
 // The workout for `date` with the current settings.
-const workout = (date, target, shuffle = 0, swaps = {}) =>
-  suggest({ date, aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay, restDay: state.restDay, target, shuffle, swaps });
+const workout = (date, target, shuffle = 0, swaps = {}, mode = null) =>
+  suggest({ date, aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay, restDay: state.restDay, target, shuffle, swaps, mode });
 
 // Today's locked-in workout, or null.
 function lockedWorkout() {
   const lock = state.locked[dayKey()];
-  return lock ? { lock, w: workout(new Date(lock.at), lock.focus, lock.shuffle, lock.swaps) } : null;
+  return lock ? { lock, w: workout(new Date(lock.at), lock.focus, lock.shuffle, lock.swaps, lock.mode) } : null;
 }
 
 // Short trainer names for the chip on the options screen.
@@ -96,13 +98,16 @@ const TRAINER_CHIPS = { bodybuilder: "Bodybuilder", powerlifter: "Powerlifter", 
 const isSplitDay = (w) => /^(Push|Pull|Legs) [AB]$/.test(w.title);
 
 function displayName(w) {
+  if (w.mode === "cardio") return "Cardio only";
   if (w.target) return `${TARGET_LABELS[w.target]} (selected)`;
   return isSplitDay(w) ? w.focus.replace(/ \(.*\)$/, "") : w.title;
 }
 
 function displayDetail(w) {
+  if (w.mode === "cardio") return "Override";
   const emphasis = isSplitDay(w) ? w.focus.match(/\((.*)\)$/)?.[1] : w.focus;
-  return emphasis ? emphasis[0].toUpperCase() + emphasis.slice(1) : "";
+  const detail = emphasis ? emphasis[0].toUpperCase() + emphasis.slice(1) : "";
+  return w.mode === "strength" ? [detail, "Strength only"].filter(Boolean).join(" · ") : detail;
 }
 
 // "See example": a YouTube search for the exercise done with good form. It
@@ -253,6 +258,7 @@ $("lock-in").addEventListener("click", () => {
     at: Date.now(),
     focus,
     shuffle: same ? previous.shuffle ?? 0 : 0,
+    mode: same ? previous.mode ?? null : null,
     swaps: same ? previous.swaps ?? {} : {},
     done: same ? previous.done ?? [] : [],
     active: true,
@@ -399,18 +405,25 @@ function renderWorkout() {
     });
     list.append(li);
   }
-  $("shuffle-row").hidden = lifts === 0;
+  // The rest day has no overrides: training on it takes picking a body part.
+  $("overrides").hidden = w.rest;
+  for (const [id, mode, label] of [["cardio-only", "cardio", "Cardio only override"], ["strength-only", "strength", "Strength training only override"]]) {
+    const on = lock.mode === mode;
+    $(id).setAttribute("aria-pressed", String(on));
+    $(id).textContent = on ? `${label} on · tap for the full plan` : label;
+  }
 }
 
-$("shuffle").addEventListener("click", () => {
+// The overrides limit the day to cardio or to lifting; tapping the one
+// that's on goes back to the full plan. What's already locked stays locked.
+function setMode(mode) {
   const today = lockedWorkout();
   if (!today) return;
-  today.lock.shuffle = (today.lock.shuffle ?? 0) + 1;
-  today.lock.swaps = {};
-  // New exercises start unlocked; the warm-up, run and cardio stay as they were.
-  today.lock.done = today.lock.done.filter((id) => !id.startsWith("ex"));
+  today.lock.mode = today.lock.mode === mode ? null : mode;
   renderWorkout();
-});
+}
+$("cardio-only").addEventListener("click", () => setMode("cardio"));
+$("strength-only").addEventListener("click", () => setMode("strength"));
 
 $("lock-out").addEventListener("click", () => {
   const lock = state.locked[dayKey()];
