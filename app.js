@@ -4,7 +4,7 @@ import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weekly
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 5:00 PM";
+const VERSION = "2026-10-24 · 6:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -526,7 +526,9 @@ function renderWorkout() {
     li.append(toggle, body);
     li.addEventListener("click", () => {
       if (done.has(item.id)) done.delete(item.id); else done.add(item.id);
-      lock.done = [...done];
+      // Keep locks from other versions of today (the workout behind an
+      // override or a rest day), so they're back if it is.
+      lock.done = [...lock.done.filter((id) => !ids.has(id)), ...done];
       renderWorkout();
       // Weekly goals reached by this lock, then the day itself if it's done.
       const today = dayKey();
@@ -541,16 +543,19 @@ function renderWorkout() {
     list.append(li);
   }
   // The scheduled rest day has no overrides: training on it takes picking a
-  // body part. An unexpected rest day only offers going back to the plan.
+  // body part. An unexpected rest day only offers going back to the
+  // workout, and not once its stretches are all locked: that day is done.
   const restOverride = lock.mode === "rest";
-  $("overrides").hidden = w.rest && !restOverride;
+  $("overrides").hidden = w.rest && (!restOverride || lock.complete);
   $("cardio-only").hidden = restOverride;
   $("strength-only").hidden = restOverride;
-  for (const [id, mode, label] of [["cardio-only", "cardio", "Cardio only override"], ["strength-only", "strength", "Strength training only override"], ["rest-override", "rest", "Unexpected rest day override"]]) {
+  for (const [id, mode, label] of [["cardio-only", "cardio", "Cardio only override"], ["strength-only", "strength", "Strength training only override"]]) {
     const on = lock.mode === mode;
     $(id).setAttribute("aria-pressed", String(on));
     $(id).textContent = on ? `${label} on · tap for the full plan` : label;
   }
+  $("rest-override").setAttribute("aria-pressed", "false");
+  $("rest-override").textContent = restOverride ? "Feeling better? Back to today's workout" : "Unexpected rest day override";
 }
 
 // The overrides limit the day to cardio or to lifting; tapping the one
@@ -588,8 +593,8 @@ $("rest-dialog").addEventListener("close", () => {
     unexpectedRest: true,
     streakBreak: $("rest-dialog").dataset.breaks === "true",
     active: true,
-    done: [],
-    celebrated: false,
+    // What's already locked stays locked, for if the workout comes back.
+    done: lock.done ?? [],
   });
   state.locked[today] = lock;
   save();
@@ -599,7 +604,8 @@ $("rest-dialog").addEventListener("close", () => {
 
 $("rest-link").addEventListener("click", askUnexpectedRest);
 
-// The override: on asks first; off goes back to the full plan, streak and all.
+// The override asks first either way. Going back to the workout keeps
+// what's locked, so the stretches come back locked if the rest day does.
 $("rest-override").addEventListener("click", () => {
   const today = lockedWorkout();
   if (!today) return;
@@ -607,7 +613,8 @@ $("rest-override").addEventListener("click", () => {
     askUnexpectedRest();
     return;
   }
-  Object.assign(today.lock, { mode: null, unexpectedRest: false, streakBreak: false, done: [] });
+  if (!confirm("Go back to today's workout? Today won't be a rest day anymore.")) return;
+  Object.assign(today.lock, { mode: null, unexpectedRest: false, streakBreak: false });
   save();
   renderWorkout();
 });
