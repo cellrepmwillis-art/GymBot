@@ -4,7 +4,7 @@ import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weekly
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 9:00 PM";
+const VERSION = "2026-10-24 · 10:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -594,8 +594,19 @@ function renderWorkout() {
 function setMode(mode) {
   const today = lockedWorkout();
   if (!today) return;
-  today.lock.mode = today.lock.mode === mode ? null : mode;
+  const next = today.lock.mode === mode ? null : mode;
+  if (!confirmEarlierDay(next === "cardio" ? "Change that day to cardio only?" : next === "strength" ? "Change that day to strength training only?" : "Change that day back to its full plan?")) return;
+  today.lock.mode = next;
   renderWorkout();
+}
+
+// Overrides on an earlier day rewrite what that day's workout was, so they
+// ask first; today's don't. True to go ahead.
+function confirmEarlierDay(change) {
+  if (!viewDay) return true;
+  const [y, m, d] = viewDay.split("-").map(Number);
+  const name = DAY_NAMES[new Date(y, m - 1, d, 12).getDay()];
+  return confirm(`You're editing ${name}, not today. ${change} Anything already locked stays locked.`);
 }
 $("cardio-only").addEventListener("click", () => setMode("cardio"));
 $("strength-only").addEventListener("click", () => setMode("strength"));
@@ -644,13 +655,16 @@ $("rest-override").addEventListener("click", () => {
   if (!today) return;
   const { lock } = today;
   if (lock.mode === "rest") {
-    if (!confirm("Work out anyway? Your rest day still covers your streak if you don't finish. Finish the workout and it counts.")) return;
+    const ask = viewDay ? "Change that day from a rest day back to a workout? The rest day still covers your streak if the workout isn't finished." : "Work out anyway? Your rest day still covers your streak if you don't finish. Finish the workout and it counts.";
+    if (!(viewDay ? confirmEarlierDay(ask) : confirm(ask))) return;
     // The rest day's celebration shouldn't stop the workout's.
     if (lock.celebrated && lock.rest) lock.celebrated = false;
     lock.mode = null;
   } else if (lock.unexpectedRest) {
+    if (!confirmEarlierDay("Change that day back to a rest day?")) return;
     lock.mode = "rest";
   } else {
+    if (!confirmEarlierDay("Mark that day as an unexpected rest day instead of a workout?")) return;
     askUnexpectedRest();
     return;
   }
