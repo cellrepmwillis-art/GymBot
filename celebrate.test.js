@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { streak, pastSeven, trainingWeek, level, celebrate, weekdayOf, unexpectedRests, unexpectedRestPrompt } from "./celebrate.js";
+import { streak, pastSeven, trainingWeek, level, celebrate, weekdayOf, unexpectedRests, unexpectedRestPrompt, weekDays, weekStats, weeklyBadges } from "./celebrate.js";
 
 // 2026-10-19 is a Monday; Sunday (0) is the rest day.
 const done = (...keys) => Object.fromEntries(keys.map((key) => [key, { complete: true }]));
@@ -100,4 +100,46 @@ test("unexpected rest prompts get firmer", () => {
   assert.equal(third.text, "Your streak will be lost. Proceed to cut the lock?");
   assert.equal(third.breaksStreak, true);
   assert.equal(unexpectedRestPrompt(3).title, "That's your 5th rest day this week");
+});
+
+test("the training week's seven days end on the rest day", () => {
+  assert.deepEqual(weekDays(OCT(21), 0), [OCT(19), OCT(20), OCT(21), OCT(22), OCT(23), OCT(24), OCT(25)]);
+});
+
+test("weekly stats add up the week's days", () => {
+  const locked = {
+    [OCT(19)]: { gym: true, strength: true, cardioMin: 25 },
+    [OCT(20)]: { gym: true, strength: false, cardioMin: 90 },
+    [OCT(25)]: { gym: true, strength: true, cardioMin: 0 }, // trained on the rest day
+    [OCT(18)]: { gym: true, strength: true, cardioMin: 60 }, // last week
+  };
+  assert.deepEqual(weekStats(locked, OCT(21), 0), { gymDays: 3, strengthDays: 2, cardioMinutes: 115 });
+});
+
+test("weekly goals are celebrated once each, as they're reached", () => {
+  const locked = { [OCT(19)]: { gym: true, strength: true, cardioMin: 30 } };
+  let awarded = [];
+  const step = () => {
+    const result = weeklyBadges({ locked, today: OCT(24), restDay: 0, awarded });
+    awarded = result.awarded;
+    return result.badges.map((b) => b.text);
+  };
+  assert.deepEqual(step(), []);
+  locked[OCT(20)] = { gym: true, strength: true, cardioMin: 30 };
+  assert.deepEqual(step(), [
+    "Looks like you managed to hit the gym twice this week. Certified Maintainer.",
+    "Strength training on 2 days this week, the HHS minimum for muscle-strengthening. Certified Strong.",
+  ]);
+  assert.deepEqual(step(), []); // not twice
+  locked[OCT(21)] = { gym: true, cardioMin: 45 };
+  locked[OCT(22)] = { gym: true, cardioMin: 45 };
+  // Jumping from 2 to 4 gym days shows only Gym Rat; 150 minutes reached.
+  assert.deepEqual(step(), [
+    "You hit the gym four days this week. Certified Gym Rat.",
+    "150 minutes of cardio this week: the weekly goal from HHS and the American Heart Association. Certified Heart Healthy.",
+  ]);
+  locked[OCT(23)] = { gym: true, cardioMin: 160 };
+  assert.deepEqual(step(), ["Five gym days this week. Certified Iron Addict.", "300 cardio minutes this week, the top of the guideline range. Certified Cardio Machine."]);
+  // A new week starts fresh.
+  assert.equal(weeklyBadges({ locked: { [OCT(26)]: { gym: true, strength: true } }, today: OCT(26), restDay: 0, awarded: [] }).badges.length, 0);
 });

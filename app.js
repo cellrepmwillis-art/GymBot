@@ -1,10 +1,10 @@
 import { dayKey, previousDay, nextReset } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned } from "./workouts.js";
-import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt } from "./celebrate.js";
+import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weeklyBadges, trainingWeek, CARDIO_GOAL, STRENGTH_DAYS } from "./celebrate.js";
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 4:00 PM";
+const VERSION = "2026-10-24 · 5:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -40,7 +40,8 @@ function load() {
   // weightStart: { day, lb } the latest weigh-in is compared with: the one
   // before it, or the weight from Settings before the first. weightSetDay:
   // the day the weight in Settings was last changed.
-  // achievements: { completeDays, fullWeeks, weeks: [week ids] }, the totals
+  // achievements: { completeDays, fullWeeks, weeks: [week ids], weekly:
+  // { week id: [weekly goals celebrated] } }, the totals
   // behind the milestones (see celebrate.js). A lock's `complete` says every
   // item that day is locked, `celebrated` that the celebration was shown.
   const defaults = {
@@ -242,6 +243,10 @@ function renderOptions() {
   $("week-total").textContent = workouts
     ? `${workouts} ${workouts === 1 ? "workout" : "workouts"} · ${burned.toLocaleString()} cal burned this week`
     : "Nothing locked yet this week.";
+  // Progress toward the weekly guideline goals.
+  const { stats } = weeklyBadges({ locked: state.locked, today: todayKey, restDay: Number(state.restDay) });
+  const tick = (ok) => (ok ? " ✓" : "");
+  $("week-goals").textContent = `${stats.gymDays} gym ${stats.gymDays === 1 ? "day" : "days"} · ${Math.min(stats.cardioMinutes, 999)} of ${CARDIO_GOAL} cardio min${tick(stats.cardioMinutes >= CARDIO_GOAL)} · strength ${Math.min(stats.strengthDays, STRENGTH_DAYS)} of ${STRENGTH_DAYS} days${tick(stats.strengthDays >= STRENGTH_DAYS)}`;
   const run = streak(state.locked, todayKey, Number(state.restDay));
   const rank = level(state.achievements.fullWeeks);
   $("streak-line").textContent = [run >= 2 ? `🔥 ${run}-day streak` : null, rank ? `🏆 ${rank}` : null].filter(Boolean).join(" · ");
@@ -437,6 +442,13 @@ function renderWorkout() {
   lock.burned = caloriesBurned(w.items, [...done], lb);
   lock.complete = done.size === w.items.length;
   lock.rest = w.rest;
+  // For the weekly goals: a gym day is anything locked past the warm-up;
+  // cardio minutes count warm-ups, cardio and runs, vigorous ones (6 METs
+  // and up, like running) double.
+  const locked = w.items.filter((item) => done.has(item.id));
+  lock.gym = !w.rest && locked.some((item) => item.kind !== "warmup");
+  lock.strength = locked.some((item) => item.kind === "lift");
+  lock.cardioMin = w.rest ? 0 : Math.round(locked.filter((item) => ["warmup", "cardio", "run"].includes(item.kind)).reduce((sum, item) => sum + item.minutes * (item.met >= 6 ? 2 : 1), 0));
   save();
 
   $("locked-count").textContent = `${done.size} of ${w.items.length} locked`;
@@ -516,7 +528,15 @@ function renderWorkout() {
       if (done.has(item.id)) done.delete(item.id); else done.add(item.id);
       lock.done = [...done];
       renderWorkout();
-      if (lock.complete && !lock.celebrated) celebrateToday(lock);
+      // Weekly goals reached by this lock, then the day itself if it's done.
+      const today = dayKey();
+      const week = trainingWeek(today, Number(state.restDay)).id;
+      state.achievements.weekly ??= {};
+      const weekly = weeklyBadges({ locked: state.locked, today, restDay: Number(state.restDay), awarded: state.achievements.weekly[week] });
+      state.achievements.weekly[week] = weekly.awarded;
+      save();
+      if (lock.complete && !lock.celebrated) celebrateToday(lock, weekly.badges);
+      else if (weekly.badges.length) showCelebration({ title: "Weekly goal hit!", line: "Keep locking in.", badges: weekly.badges }, 0);
     });
     list.append(li);
   }
@@ -604,16 +624,20 @@ $("lock-out").addEventListener("click", lockOut);
 // ---- Celebration ----
 
 // Shown once a day, when the last lock is locked.
-function celebrateToday(lock) {
+function celebrateToday(lock, weekly = []) {
   lock.celebrated = true;
   const { celebration, achievements } = celebrate({
     locked: state.locked, today: dayKey(), restDay: Number(state.restDay), achievements: state.achievements, rest: lock.rest,
   });
   state.achievements = achievements;
   save();
+  showCelebration({ ...celebration, badges: [...celebration.badges, ...weekly] }, lock.burned);
+}
+
+function showCelebration(celebration, burned) {
   $("celebrate-title").textContent = celebration.title;
   $("celebrate-line").textContent = celebration.line;
-  $("celebrate-burned").textContent = lock.burned ? `🔥 ${lock.burned.toLocaleString()} cal burned today` : "";
+  $("celebrate-burned").textContent = burned ? `🔥 ${burned.toLocaleString()} cal burned today` : "";
   $("celebrate-badges").replaceChildren(...celebration.badges.map(({ icon, text }) => {
     const li = document.createElement("li");
     li.append(Object.assign(document.createElement("span"), { className: "badge-icon", textContent: icon }), text);

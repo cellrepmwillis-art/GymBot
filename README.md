@@ -65,6 +65,19 @@ On the workout screen every part of the session (warm-up, run, each exercise, ca
   - 💪 5 or 6 of the past 7 days: "Arnold would be proud."
   - 🔥 streaks of 3, 7, 14, 21, 30 days and on. Rest days are skipped, so they never break one.
   - 🔑 your first fully locked day, and ⭐ 10, 25, 50, 100 and more.
+- **Weekly goals:** celebrated the moment they're reached, even mid-week and even without a full Locksmith week. They follow the US physical activity guidelines (HHS, backed by the American Heart Association): at least 150 minutes of moderate cardio a week (vigorous minutes, like running, count double) and strength training on 2 or more days.
+
+  | Badge | When |
+  |---|---|
+  | 🏅 Certified Maintainer | Gym on 2 days this week ("Looks like you managed to hit the gym twice this week.") |
+  | 🏅 Certified Regular | 3 days |
+  | 🐀 Certified Gym Rat | 4 days ("You hit the gym four days this week.") |
+  | 🦾 Certified Iron Addict | 5 days (6 is Locksmith) |
+  | 🏋️ Certified Strong | Strength training on 2 days, the HHS minimum |
+  | ❤️ Certified Heart Healthy | 150 cardio minutes |
+  | 🫀 Certified Cardio Machine | 300 cardio minutes, the top of the guideline range |
+
+  A gym day is any day with something locked past the warm-up. Cardio minutes come from locked warm-ups, cardio and runs. Each badge shows once per training week, and the options screen tracks progress, like "3 gym days · 95 of 150 cardio min · strength 2 of 2 days ✓".
   The rest day gets a quieter "Recovery locked in" and doesn't count toward any of them. The options screen shows your current streak and Locksmith level under This week. Locked-in days are now kept for about a year so long streaks count.
 - **Lock-In Weight:** on the options screen, under This week. Log your weight (about once a week, at the same time of day, works best) and GymBot compares it with your last weigh-in, so each one becomes the starting point for the next. The first is compared with the weight in Settings. Logging again the same day replaces that day's number and still compares with the weigh-in before it. Logging less than a week after the last weigh-in asks first: "No need to call the locksmith yet ... weigh in again in 4 days (Wednesday, Oct 28)", with **I'll wait** or **Lock weight anyway**. A weight locked early isn't judged; it says "No change since your last weigh-in", "Don't sweat that difference" for a normal swing, or that a big swing over a few days is likely water. The box shows when the next weigh-in is due. It judges the pace as a share of body weight a week, against your aim:
 

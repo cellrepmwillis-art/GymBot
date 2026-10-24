@@ -126,3 +126,72 @@ export function celebrate({ locked, today, restDay, achievements, rest }) {
 
   return { celebration: { title: "Locked in!", line: pick(DAY_LINES), badges }, achievements: done };
 }
+
+// ---- Weekly goals ----
+
+// The US physical activity guidelines (HHS, backed by the American Heart
+// Association): at least 150 minutes of moderate cardio a week, or 75 of
+// vigorous (so vigorous minutes count double), up to 300 for more benefit;
+// and muscle-strengthening on 2 or more days. Days carry what was locked:
+// `gym` (anything past the warm-up), `strength` (a lift) and `cardioMin`
+// (moderate-equivalent cardio minutes).
+export const CARDIO_GOAL = 150;
+export const CARDIO_HIGH = 300;
+export const STRENGTH_DAYS = 2;
+
+// All seven days of the training week holding `today`, rest day last.
+export function weekDays(today, restDay) {
+  const { days } = trainingWeek(today, restDay);
+  const [y, m, d] = days[5].split("-").map(Number);
+  const last = new Date(y, m - 1, d + 1, 12);
+  return [...days, `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, "0")}-${String(last.getDate()).padStart(2, "0")}`];
+}
+
+export function weekStats(locked, today, restDay) {
+  const stats = { gymDays: 0, strengthDays: 0, cardioMinutes: 0 };
+  for (const key of weekDays(today, restDay)) {
+    const day = locked[key];
+    if (!day) continue;
+    if (day.gym) stats.gymDays++;
+    if (day.strength) stats.strengthDays++;
+    stats.cardioMinutes += day.cardioMin ?? 0;
+  }
+  return stats;
+}
+
+const GYM_TIERS = [
+  [5, "gym5", "🦾", "Five gym days this week. Certified Iron Addict."],
+  [4, "gym4", "🐀", "You hit the gym four days this week. Certified Gym Rat."],
+  [3, "gym3", "🏅", "Three gym days this week. Certified Regular."],
+  [2, "gym2", "🏅", "Looks like you managed to hit the gym twice this week. Certified Maintainer."],
+];
+
+// Weekly goals reached and not yet celebrated this week. `awarded` lists the
+// ones already celebrated; returns the new badges and the updated list.
+export function weeklyBadges({ locked, today, restDay, awarded = [] }) {
+  const stats = weekStats(locked, today, restDay);
+  const badges = [];
+  const got = new Set(awarded);
+  const award = (id, icon, text) => {
+    if (got.has(id)) return;
+    got.add(id);
+    badges.push({ icon, text });
+  };
+  // Only the highest new gym tier; the lower ones count as reached.
+  const tier = GYM_TIERS.find(([days]) => stats.gymDays >= days);
+  if (tier && !got.has(tier[1])) {
+    award(tier[1], tier[2], tier[3]);
+    for (const [days, id] of GYM_TIERS) if (days < tier[0]) got.add(id);
+  }
+  if (stats.strengthDays >= STRENGTH_DAYS) {
+    award("strength2", "🏋️", "Strength training on 2 days this week, the HHS minimum for muscle-strengthening. Certified Strong.");
+  }
+  if (stats.cardioMinutes >= CARDIO_HIGH) {
+    got.add("cardio150");
+    award("cardio300", "🫀", "300 cardio minutes this week, the top of the guideline range. Certified Cardio Machine.");
+  } else if (stats.cardioMinutes >= CARDIO_GOAL) {
+    award("cardio150", "❤️", "150 minutes of cardio this week: the weekly goal from HHS and the American Heart Association. Certified Heart Healthy.");
+  }
+  return { badges, awarded: [...got], stats };
+}
+

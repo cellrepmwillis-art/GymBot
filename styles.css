@@ -319,3 +319,4 @@ main[hidden], .dock[hidden] { display: none; }
 .rest-link { margin-top: 12px; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
 .rest-link[hidden], .overrides button[hidden] { display: none; }
 #rest-dialog p { margin: 0 0 16px; }
+.week-goals { margin: 4px 0 0; }
