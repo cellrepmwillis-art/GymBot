@@ -14,6 +14,9 @@ export function daysBetween(from, to) {
   return Math.round((date(to) - date(from)) / (24 * 60 * 60 * 1000));
 }
 
+// Days between weigh-ins before a trend means anything.
+export const WEEK_DAYS = 7;
+
 const STEADY = 0.25; // % of body weight a week
 const SAFE_LOSS = 1.0;
 const LEAN_GAIN = 0.5;
@@ -40,13 +43,21 @@ export function analyzeWeight({ start, latest, aim = "maintain", trainer = "none
   const change = latest.lb - start.lb;
   const days = daysBetween(start.day, latest.day);
   const base = { change, weeks: days / 7, perWeek: null };
+  // Less than a week apart (the app suggests waiting, but you can lock a
+  // weight anyway): report the change without judging it.
   if (days < 7) {
+    const wait = WEEK_DAYS - days;
+    const again = `Weigh in again in ${wait} ${wait === 1 ? "day" : "days"} for the real trend.`;
+    const span = days === 0 ? "today" : `in ${days} ${days === 1 ? "day" : "days"}`;
+    const big = Math.abs(change) > Math.max(3, start.lb * 0.015);
     return {
       ...base,
       tone: "neutral",
       label: "Too soon to tell",
-      headline: `${change === 0 ? "No change" : `${change < 0 ? "Down" : "Up"} ${lbs(change)}`} so far.`,
-      detail: "Weight swings a few pounds day to day with water and food. Check back after a week for a real trend.",
+      headline: Math.abs(change) < 0.1 ? "No change since your last weigh-in." : `${change < 0 ? "Down" : "Up"} ${lbs(change)} ${span}.`,
+      detail: Math.abs(change) < 0.1 ? `Steady. ${again}`
+        : big ? `That's a big swing for a few days, and most of it is likely water, salt or food. ${again}`
+        : `Don't sweat that difference: weight swings a few pounds day to day with water, salt and food. ${again}`,
     };
   }
   const perWeek = (change / days) * 7;

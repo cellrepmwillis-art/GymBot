@@ -311,3 +311,8 @@ main[hidden], .dock[hidden] { display: none; }
 .verdict-headline { font-weight: 700; margin: 8px 0 4px; }
 .verdict .small { margin: 0; }
 @media (prefers-color-scheme: dark) { .verdict[data-tone="warn"] .chip { color: #fbbf24; } .verdict[data-tone="bad"] .chip { color: #f87171; } }
+.weigh-wait { margin-top: 12px; padding: 12px; border-radius: 12px; background: var(--accent-soft); }
+.weigh-wait[hidden] { display: none; }
+.weigh-wait p { margin: 0 0 10px; font-weight: 600; }
+.weigh-wait-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.weigh-wait-actions button { padding: 10px 8px; }

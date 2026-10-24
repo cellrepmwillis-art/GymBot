@@ -1,10 +1,10 @@
 import { dayKey, previousDay, nextReset } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned } from "./workouts.js";
 import { celebrate, streak, level } from "./celebrate.js";
-import { analyzeWeight, daysBetween } from "./weight.js";
+import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 2:00 PM";
+const VERSION = "2026-10-24 · 3:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -261,19 +261,24 @@ const shortDate = (key) => {
 function renderWeight() {
   const latest = state.weighIns.at(-1) ?? null;
   const start = state.weightStart;
-  $("weigh-input").placeholder = latest?.day === dayKey() ? `Logged ${latest.lb} lb today` : "Today's weight (lb)";
+  const sinceLast = latest ? daysBetween(latest.day, dayKey()) : WEEK_DAYS;
+  $("weigh-input").placeholder = latest?.day === dayKey() ? `Logged ${latest.lb} lb today`
+    : sinceLast < WEEK_DAYS ? `Next weigh-in in ${WEEK_DAYS - sinceLast} ${WEEK_DAYS - sinceLast === 1 ? "day" : "days"}`
+    : "Today's weight (lb)";
   if (!start || !latest) {
     $("weigh-summary").textContent = "Log your weight about once a week, at the same time of day. Each weigh-in is compared with the one before it.";
     $("weigh-verdict").hidden = true;
     return;
   }
   const result = start.day === latest.day ? null : analyzeWeight({ start, latest, aim: state.aim, trainer: state.trainer });
-  const weeks = Math.round(daysBetween(start.day, latest.day) / 7);
+  const days = daysBetween(start.day, latest.day);
+  const weeks = Math.round(days / 7);
+  const span = days < 7 ? (days ? ` in ${days} ${days === 1 ? "day" : "days"}` : "") : ` in ${weeks} ${weeks === 1 ? "week" : "weeks"}`;
   const change = latest.lb - start.lb;
   const moved = change === 0 ? "no change" : `${change < 0 ? "down" : "up"} ${Math.abs(change).toFixed(1)} lb`;
   $("weigh-summary").textContent = start.day === latest.day
     ? `Starting at ${start.lb} lb on ${shortDate(start.day)}. Log again next week to see how it's moving.`
-    : `Last weigh-in ${start.lb} lb on ${shortDate(start.day)} · now ${latest.lb} lb · ${moved}${weeks >= 1 ? ` in ${weeks} ${weeks === 1 ? "week" : "weeks"}` : ""}`;
+    : `Last weigh-in ${start.lb} lb on ${shortDate(start.day)} · now ${latest.lb} lb · ${moved}${span}`;
   $("weigh-verdict").hidden = !result;
   if (!result) return;
   $("weigh-verdict").dataset.tone = result.tone;
@@ -282,15 +287,51 @@ function renderWeight() {
   $("weigh-detail").textContent = result.detail;
 }
 
+// The last weigh-in from before today.
+const previousWeighIn = () => state.weighIns.filter((w) => w.day !== dayKey()).at(-1);
+
+// A weight typed in, waiting on "Lock weight anyway".
+let pendingLb = null;
+
 $("weigh-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const lb = Math.round(Number($("weigh-input").value) * 10) / 10;
   if (!(lb >= 50 && lb <= 700)) return;
+  // Weighing in daily mostly shows water, so less than a week after the
+  // last weigh-in GymBot suggests waiting. Fixing today's number doesn't ask.
+  const previous = previousWeighIn();
+  const fixingToday = state.weighIns.at(-1)?.day === dayKey();
+  const days = previous ? daysBetween(previous.day, dayKey()) : WEEK_DAYS;
+  if (days < WEEK_DAYS && !fixingToday) {
+    const wait = WEEK_DAYS - days;
+    const [y, m, d] = previous.day.split("-").map(Number);
+    const when = new Date(y, m - 1, d + WEEK_DAYS).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
+    pendingLb = lb;
+    $("weigh-wait-text").textContent = `No need to call the locksmith yet. Your last weigh-in was ${days === 1 ? "yesterday" : `${days} days ago`}; weigh in again in ${wait} ${wait === 1 ? "day" : "days"} (${when}) to see the real trend.`;
+    $("weigh-wait").hidden = false;
+    return;
+  }
+  logWeight(lb);
+});
+
+$("weigh-anyway").addEventListener("click", () => {
+  if (pendingLb !== null) logWeight(pendingLb);
+});
+
+$("weigh-wait-ok").addEventListener("click", () => {
+  pendingLb = null;
+  $("weigh-wait").hidden = true;
+  $("weigh-input").value = "";
+});
+
+function logWeight(lb) {
+  pendingLb = null;
+  $("weigh-wait").hidden = true;
   const today = dayKey();
   // Compare with the last weigh-in from an earlier day (so fixing today's
   // number keeps the comparison); before the first one, with the weight from
   // Settings, or else this weigh-in itself.
-  const previous = state.weighIns.filter((w) => w.day !== today).at(-1);
+  const previous = previousWeighIn();
   if (previous) state.weightStart = { ...previous };
   else if (!state.weightStart) state.weightStart = state.weightLb > 0 ? { day: state.weightSetDay ?? today, lb: state.weightLb } : { day: today, lb };
   state.weighIns = [...state.weighIns.filter((w) => w.day !== today), { day: today, lb }].slice(-400);
@@ -299,7 +340,7 @@ $("weigh-form").addEventListener("submit", (event) => {
   $("weigh-input").value = "";
   save();
   renderOptions();
-});
+}
 
 // Settings on the options screen save as soon as they change.
 for (const [value, { label }] of Object.entries(TRAINERS)) $("trainer-input").add(new Option(label, value));

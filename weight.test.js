@@ -18,7 +18,11 @@ test("nothing to judge before two weigh-ins or a week", () => {
   assert.equal(analyzeWeight({ start, latest: start }), null);
   const early = analyzeWeight({ start, latest: at(3, 198), aim: "cut" });
   assert.equal(early.label, "Too soon to tell");
-  assert.equal(early.headline, "Down 2.0 lb so far.");
+  assert.equal(early.headline, "Down 2.0 lb in 3 days.");
+  assert.equal(early.detail, "Don't sweat that difference: weight swings a few pounds day to day with water, salt and food. Weigh in again in 4 days for the real trend.");
+  assert.equal(analyzeWeight({ start, latest: at(6, 200), aim: "cut" }).headline, "No change since your last weigh-in.");
+  assert.match(analyzeWeight({ start, latest: at(6, 200), aim: "cut" }).detail, /in 1 day for/);
+  assert.match(analyzeWeight({ start, latest: at(2, 205), aim: "cut" }).detail, /^That's a big swing/);
 });
 
 test("cut: safe, fast, stalling, going up", () => {
