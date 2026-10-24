@@ -4,7 +4,7 @@ import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weekly
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 10:00 PM";
+const VERSION = "2026-10-24 · 11:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -186,12 +186,35 @@ function renderWeekStrip(container) {
       li.setAttribute("aria-label", `Edit ${DAY_NAMES[weekday]}`);
       li.addEventListener("click", () => openDay(key));
       li.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") openDay(key); });
+    } else if (key > today) {
+      // Upcoming days stay closed: GymBot is for today, in the gym.
+      li.classList.add("upcoming");
+      li.addEventListener("click", () => toast(UPCOMING_LINES[weekday % UPCOMING_LINES.length]));
     }
     if (lock?.done?.length) workouts++;
     burned += lock?.burned ?? 0;
     return li;
   }));
   return { workouts, burned };
+}
+
+const UPCOMING_LINES = [
+  "One key at a time. Turn today's key in the lock before you open tomorrow's door.",
+  "That door's still locked. Today's lock is the only one that matters right now.",
+];
+
+// A short message at the bottom of the screen that fades on its own.
+let toastTimer = null;
+function toast(text) {
+  const el = $("toast");
+  el.textContent = text;
+  el.hidden = false;
+  el.classList.remove("fade");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el.classList.add("fade");
+    toastTimer = setTimeout(() => { el.hidden = true; }, 400);
+  }, 3500);
 }
 
 // Open an earlier day of this week on the workout screen. A day that was
