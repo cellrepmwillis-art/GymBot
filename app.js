@@ -4,7 +4,7 @@ import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weekly
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-25 · 2:00 AM";
+const VERSION = "2026-10-25 · 3:00 AM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -69,6 +69,19 @@ const state = load();
 // Locks saved before the checklist held exercise numbers; they're item ids now.
 for (const lock of Object.values(state.locked)) lock.done = (lock.done ?? []).map((id) => (typeof id === "number" ? `ex${id}` : id));
 
+// A day key at a time of day (10am unless given), as a Date.
+const dateOfKey = (key, hour = 10, minute = 0) => {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d, hour, minute);
+};
+
+// Before the day ended at midnight it ended at 3am, so a session started
+// after midnight was saved under the day before with the next day's time.
+// Those become late-night sessions at the end of their own day.
+for (const [key, lock] of Object.entries(state.locked)) {
+  if (lock.at && dayKey(new Date(lock.at)) !== key) lock.at = dateOfKey(key, 23, 30).getTime();
+}
+
 // CookBot, hosted on the same site, keeps its settings under "cookbot".
 function cookbot() {
   try {
@@ -103,7 +116,11 @@ const currentDay = () => viewDay ?? dayKey();
 // The locked-in workout for the day on screen, or null.
 function lockedWorkout() {
   const lock = state.locked[currentDay()];
-  return lock ? { lock, w: workout(new Date(lock.at), lock.focus, lock.shuffle, lock.swaps, lock.mode) } : null;
+  if (!lock) return null;
+  // The day comes from the key, the time of day from `at`; a time that isn't
+  // on that day falls back to 10am.
+  const at = lock.at && dayKey(new Date(lock.at)) === currentDay() ? new Date(lock.at) : dateOfKey(currentDay());
+  return { lock, w: workout(at, lock.focus, lock.shuffle, lock.swaps, lock.mode) };
 }
 
 // Short trainer names for the chip on the options screen.
@@ -220,8 +237,7 @@ function toast(text) {
 // Open an earlier day of this week on the workout screen. A day that was
 // never locked in gets its plan as of 10am that day.
 function openDay(key) {
-  const [y, m, d] = key.split("-").map(Number);
-  state.locked[key] ??= { at: new Date(y, m - 1, d, 10).getTime(), focus: null, shuffle: 0, swaps: {}, done: [], burned: 0, active: false };
+  state.locked[key] ??= { at: dateOfKey(key).getTime(), focus: null, shuffle: 0, swaps: {}, done: [], burned: 0, active: false };
   viewDay = key;
   save();
   render();
@@ -1009,7 +1025,7 @@ function render() {
     renderWorkout();
     renderChat();
     $("edit-banner").hidden = !viewDay;
-    if (viewDay) $("edit-banner").textContent = `Editing ${new Date(lockedWorkout().lock.at).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}. Changes count toward that day.`;
+    if (viewDay) $("edit-banner").textContent = `Editing ${dateOfKey(viewDay).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}. Changes count toward that day.`;
     $("ask-card").hidden = Boolean(viewDay);
     $("lock-out-label").textContent = viewDay ? "Done editing" : "Lock out";
   } else if (screen === "rest") {
