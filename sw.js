@@ -1,6 +1,6 @@
 // Caches the app so it opens instantly and works offline. Only Ask the
 // trainer needs a connection.
-const CACHE = "gymbot-v34";
+const CACHE = "gymbot-v35";
 const SHELL = [
   "./",
   "index.html",
@@ -13,6 +13,7 @@ const SHELL = [
   "celebrate.js",
   "weight.js",
   "outdoor.js",
+  "health.js",
   "ask.js",
   "vendor/anthropic-sdk-0.131.0.js",
   "manifest.webmanifest",

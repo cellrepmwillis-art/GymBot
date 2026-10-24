@@ -371,3 +371,5 @@ main[hidden], .dock[hidden] { display: none; }
 .session-choices.strength-first .session-strength { order: -1; }
 .session-choices p { margin: 0; text-align: center; }
 .session-choices p[hidden] { display: none; }
+.height-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.height-fields .field { margin-bottom: 4px; }

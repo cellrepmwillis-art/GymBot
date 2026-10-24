@@ -274,6 +274,17 @@
         <input id="weight-input" type="number" min="50" max="700" step="any" inputmode="decimal">
       </label>
       <p class="muted small" id="weight-note"></p>
+      <div class="height-fields">
+        <label class="field">
+          <span>Height (ft)</span>
+          <input id="feet-input" type="number" min="3" max="8" step="1" inputmode="numeric">
+        </label>
+        <label class="field">
+          <span>(in)</span>
+          <input id="inches-input" type="number" min="0" max="11" step="1" inputmode="numeric">
+        </label>
+      </div>
+      <p class="muted small" id="height-note">For your protein target. Optional.</p>
       <label class="field">
         <span>Anthropic API key (optional, only for Ask the trainer)</span>
         <input id="key-input" type="password" autocomplete="off" placeholder="sk-ant-...">

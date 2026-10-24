@@ -2,9 +2,10 @@ import { dayKey, previousDay, nextReset } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned, sessionLimits } from "./workouts.js";
 import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weeklyBadges, trainingWeek, weekDays, CARDIO_GOAL, STRENGTH_DAYS } from "./celebrate.js";
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
+import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-25 · 7:00 AM";
+const VERSION = "2026-10-25 · 8:00 AM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -35,6 +36,7 @@ function load() {
   // restDay: the weekday off (Sunday is 0). restAck: the day "Lock in anyway"
   // was tapped on the rest day, so the reminder shows once.
   // weightLb: for calories burned; null uses CookBot's weight, if any.
+  // heightIn: for the protein target; null uses CookBot's height, if any.
   // apiKey: the person's Anthropic API key, for Ask the trainer. chat: today's
   // questions, { day, history, shown: [{ q, a }], context }, where history is
   // the conversation as sent to the API and context the last workout
@@ -50,7 +52,7 @@ function load() {
   const defaults = {
     aim: "maintain", gym: "pf", trainer: "none", shotDay: "", restDay: 0, restAck: null, weightLb: null,
     locked: {}, focus: null, apiKey: "", chat: null, achievements: { completeDays: 0, fullWeeks: 0, weeks: [] },
-    weighIns: [], weightStart: null, weightSetDay: null,
+    weighIns: [], weightStart: null, weightSetDay: null, heightIn: null,
   };
   try {
     const data = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -100,6 +102,13 @@ function weight() {
   const lb = Number(cookbot().profile?.weightLb);
   if (lb > 0) return { lb, from: "cookbot" };
   return { lb: DEFAULT_WEIGHT_LB, from: "default" };
+}
+
+// Height in inches, from Settings or CookBot's profile, or null.
+function height() {
+  if (state.heightIn > 0) return state.heightIn;
+  const inches = Number(cookbot().profile?.heightIn);
+  return inches > 0 ? inches : null;
 }
 
 // ---- Shared ----
@@ -528,7 +537,9 @@ function renderWorkout() {
   $("plan-minutes").textContent = `~${w.minutes} min`;
 
   const notes = w.notes;
-  const health = w.health ?? [];
+  // The trainer's own notes, then everyday protein, water and sleep.
+  const known = weight();
+  const health = mergeHealth(w.health ?? [], healthNotes({ weightLb: known.from === "default" ? null : known.lb, heightIn: height(), aim: w.aim }), 5);
   $("health").hidden = !health.length;
   $("health-summary").textContent = `Food & health (${health.length})`;
   $("health-notes").replaceChildren(...health.map((text) => Object.assign(document.createElement("li"), { textContent: text })));
@@ -1075,6 +1086,11 @@ function showSettingsHints() {
   $("weight-note").textContent = typed > 0 ? ""
     : fromCookbot > 0 ? `Leave it blank to use your CookBot weight (${fromCookbot} lb).`
     : `Until you add it, calories are estimated for ${DEFAULT_WEIGHT_LB} lb.`;
+  const cookbotHeight = Number(cookbot().profile?.heightIn);
+  const typedHeight = Number($("feet-input").value) || Number($("inches-input").value);
+  $("height-note").textContent = typedHeight ? "For your protein target."
+    : cookbotHeight > 0 ? `Leave it blank to use your CookBot height (${Math.floor(cookbotHeight / 12)}'${cookbotHeight % 12}").`
+    : "For your protein target. Optional.";
   const shared = cookbot().apiKey || "";
   $("cookbot-key").hidden = !shared || $("key-input").value.trim() === shared;
 }
@@ -1088,6 +1104,8 @@ $("use-cookbot-key").addEventListener("click", () => {
 function openSettings() {
   $("rest-input").value = String(state.restDay);
   $("weight-input").value = state.weightLb ?? "";
+  $("feet-input").value = state.heightIn ? Math.floor(state.heightIn / 12) : "";
+  $("inches-input").value = state.heightIn ? state.heightIn % 12 : "";
   $("key-input").value = state.apiKey;
   showSettingsHints();
   $("settings").showModal();
@@ -1140,6 +1158,9 @@ $("restore-file").addEventListener("change", async () => {
 $("settings").addEventListener("close", () => {
   if ($("settings").returnValue !== "save") return;
   state.restDay = Number($("rest-input").value);
+  const feet = Number($("feet-input").value);
+  const inches = Number($("inches-input").value);
+  state.heightIn = feet || inches ? feet * 12 + inches : null;
   const lb = Number($("weight-input").value);
   const weightLb = lb > 0 ? lb : null;
   if (weightLb !== state.weightLb) state.weightSetDay = weightLb ? dayKey() : null;
