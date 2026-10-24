@@ -5,7 +5,7 @@ import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-25 · 12:00 PM";
+const VERSION = "2026-10-25 · 12:30 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -37,7 +37,7 @@ function load() {
   // was tapped on the rest day, so the reminder shows once.
   // weightLb: for calories burned and the protein target, or null.
   // heightIn: for the protein target, or null.
-  // routine: "My routine", { cardio, minutes, strength }, and useRoutine
+  // routine: "User selected", { cardio, minutes, strength }, and useRoutine
   // whether it's the plan (until Default is picked). A lock's `routine` is
   // the routine it was locked in with.
   // apiKey: the person's Anthropic API key, for Ask the trainer. chat: today's
@@ -312,7 +312,7 @@ function renderOptions() {
     : `Today: ${displayName(today)}`;
 
   // Default and My routine last until changed; a body part is for today.
-  const focusChoices = [[null, "Default"], ["routine", "My routine"], ...Object.entries(TARGET_LABELS)];
+  const focusChoices = [[null, "Default"], ["routine", "User selected"], ...Object.entries(TARGET_LABELS)];
   segmented($("focus"), focusChoices, target ?? (activeRoutine() ? "routine" : null), (value) => {
     if (value === "routine" && !state.routine) {
       openRoutine();

@@ -242,7 +242,7 @@ export const TARGET_LABELS = { chest: "Chest", back: "Back", shoulders: "Shoulde
 
 // ---- My routine ----
 
-// Cardio for "My routine", by key: what it's called, what to do for
+// Cardio for "User selected", by key: what it's called, what to do for
 // `minutes`, its MET and whether it's done outdoors (for the Outdoors & home
 // gym) or at a gym.
 export const ROUTINE_CARDIO = {
@@ -496,7 +496,7 @@ const MAX_CHOICES = 3;
 // instead of today's split. `trainer` is a key of TRAINERS, and `shotDay` the
 // weekday (Sunday is 0) of a weekly GLP-1 shot. `restDay` is the weekday off;
 // on it, without a target, this returns a rest day.
-// "My routine": a person's own day, made of their cardio and their choice of
+// "User selected": a person's own day, made of their cardio and their choice of
 // lifting, as one session. `routine` is { cardio, minutes, strength } (keys
 // of ROUTINE_CARDIO and ROUTINE_STRENGTH). It applies on training days when
 // no body part is picked and no override is on; the rest day stays a rest
@@ -529,7 +529,7 @@ export function suggest(args = {}) {
     run: null,
     cardio: text,
     title: lifting ? `${TARGET_LABELS[lifting]} + ${short}` : short,
-    focus: lifting ? "My routine" : "My routine · cardio day",
+    focus: lifting ? "User selected" : "User selected · cardio day",
     minutes: Math.round((5 + lifted + minutes) / 5) * 5,
   };
 }
