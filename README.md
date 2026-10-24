@@ -58,7 +58,7 @@ On the workout screen every part of the session (warm-up, run, each exercise, ca
   | 2nd | 3rd | "Got it, hope you feel better. Back to locking in tomorrow, champ." | Safe |
   | 3rd or more | 4th+ | "Your streak will be lost. Proceed to cut the lock?" (Cut the lock / Keep my streak) | Lost |
 
-  Tapping the override again goes back to the full plan and undoes it. Excused rest days don't break a streak, but a full-week Locksmith still takes all six training days.
+  **Feeling better? Work out anyway** stays available all day, even after the stretches are locked. It asks first, keeps the day excused (the streak is covered if the workout isn't finished) and counts it as a workout if it is; **Back to my rest day** switches back. Switching keeps everything already locked on both sides. Excused rest days don't break a streak, but a full-week Locksmith still takes all six training days.
 - **See example:** every exercise and stretch has a ▶ See example link that opens a YouTube search for it done with good form (in the YouTube app, on phones that have it). Tapping the link doesn't lock the exercise.
 - **Celebrations:** locking the last lock of the day brings up a "Locked in!" screen with confetti, a buzz on phones that support it, the day's calories and any milestones, then **Lock out** or **Stay here**. It shows once a day; unlocking and relocking doesn't repeat it. Milestones:
   - 🏆 every training day of the week finished: "You locked in this week: all six days' goals met. Official Locksmith level achieved." Four full weeks make you a Master Locksmith and twelve a Vault Keeper.

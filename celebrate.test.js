@@ -24,9 +24,11 @@ test("streaks skip the rest day and wait for today", () => {
 test("past seven days", () => {
   const locked = done(OCT(18), OCT(19), OCT(20), OCT(22), OCT(24));
   assert.equal(pastSeven(locked, OCT(24), 0), 5);
-  // Stretching on the rest day doesn't count as a workout.
+  // Stretching on a rest day doesn't count as a workout, scheduled or not.
   locked[OCT(18)] = { complete: true, rest: true };
   assert.equal(pastSeven(locked, OCT(24), 0), 4);
+  locked[OCT(20)] = { complete: true, rest: true, unexpectedRest: true };
+  assert.equal(pastSeven(locked, OCT(24), 0), 3);
 });
 
 test("the training week starts the day after the rest day", () => {
@@ -142,4 +144,20 @@ test("weekly goals are celebrated once each, as they're reached", () => {
   assert.deepEqual(step(), ["Five gym days this week. Certified Iron Addict.", "300 cardio minutes this week, the top of the guideline range. Certified Cardio Machine."]);
   // A new week starts fresh.
   assert.equal(weeklyBadges({ locked: { [OCT(26)]: { gym: true, strength: true } }, today: OCT(26), restDay: 0, awarded: [] }).badges.length, 0);
+});
+
+test("an unexpected rest day worked out anyway", () => {
+  const locked = done(OCT(19), OCT(20));
+  // Stretches finished: excused, not counted.
+  locked[OCT(21)] = { unexpectedRest: true, complete: true, rest: true };
+  assert.equal(streak(locked, OCT(21), 0), 2);
+  // Worked out anyway, not finished: still excused.
+  locked[OCT(21)] = { unexpectedRest: true, complete: false, rest: false };
+  assert.equal(streak(locked, OCT(21), 0), 2);
+  // Finished the workout: it counts.
+  locked[OCT(21)] = { unexpectedRest: true, complete: true, rest: false };
+  assert.equal(streak(locked, OCT(21), 0), 3);
+  // Even after cutting the lock, finishing the workout keeps the streak.
+  locked[OCT(21)].streakBreak = true;
+  assert.equal(streak(locked, OCT(21), 0), 3);
 });

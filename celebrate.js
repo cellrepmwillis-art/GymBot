@@ -14,20 +14,27 @@ export function weekdayOf(key) {
 
 const isComplete = (locked, key) => Boolean(locked[key]?.complete);
 
+// A finished workout, not rest-day stretching.
+const isWorkout = (locked, key) => isComplete(locked, key) && !locked[key].rest;
+
 // Training days finished in a row, counting back from today (or yesterday,
 // while today isn't finished yet). Rest days, and unexpected rest days that
-// didn't cut the lock, are skipped, not counted, so they don't break it.
+// didn't cut the lock, are skipped, not counted, so they don't break it. An
+// unexpected rest day worked out anyway counts once the workout is finished.
 export function streak(locked, today, restDay) {
   let count = 0;
   let key = isComplete(locked, today) || locked[today]?.unexpectedRest ? today : previousDay(today);
   for (let i = 0; i < 1000; i++, key = previousDay(key)) {
     if (weekdayOf(key) === restDay) continue;
+    if (isWorkout(locked, key)) {
+      count++;
+      continue;
+    }
     if (locked[key]?.unexpectedRest) {
       if (locked[key].streakBreak) break;
       continue;
     }
-    if (!isComplete(locked, key)) break;
-    count++;
+    break;
   }
   return count;
 }
@@ -49,12 +56,11 @@ export function unexpectedRestPrompt(taken) {
 }
 
 // Finished workouts in the last seven days, today included. Rest-day
-// stretching doesn't count; a workout on the rest day does.
-export function pastSeven(locked, today, restDay) {
+// stretching doesn't count, scheduled or unexpected; a workout on the rest
+// day does.
+export function pastSeven(locked, today) {
   let count = 0;
-  for (let i = 0, key = today; i < 7; i++, key = previousDay(key)) {
-    if (isComplete(locked, key) && !(weekdayOf(key) === restDay && locked[key].rest)) count++;
-  }
+  for (let i = 0, key = today; i < 7; i++, key = previousDay(key)) if (isWorkout(locked, key)) count++;
   return count;
 }
 
@@ -117,7 +123,7 @@ export function celebrate({ locked, today, restDay, achievements, rest }) {
     const times = done.fullWeeks > 1 ? ` That's ${done.fullWeeks} full weeks.` : "";
     badges.push({ icon: "🏆", text: `You locked in this week: all six days' goals met. ${rank} level achieved.${times}` });
   }
-  const seven = pastSeven(locked, today, restDay);
+  const seven = pastSeven(locked, today);
   if (seven >= 5 && !weekDone) badges.push({ icon: "💪", text: `You locked in ${seven} of the past 7 days. Arnold would be proud.` });
   const run = streak(locked, today, restDay);
   if (STREAK_MARKS.includes(run)) badges.push({ icon: "🔥", text: `${run}-day streak. Rest days don't break it.` });

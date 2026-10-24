@@ -4,7 +4,7 @@ import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weekly
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 6:00 PM";
+const VERSION = "2026-10-24 · 7:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -230,7 +230,7 @@ function renderOptions() {
     li.append(DAY_NAMES[(i + 1) % 7].slice(0, 3));
     const mark = document.createElement("span");
     mark.className = "mark";
-    if (lock?.unexpectedRest) mark.textContent = "💤";
+    if (lock?.unexpectedRest && lock.mode === "rest") mark.textContent = "💤";
     else if (lock?.burned) mark.textContent = lock.burned;
     else mark.textContent = lock ? "✓" : (i + 1) % 7 === Number(state.restDay) ? "–" : "";
     li.append(mark);
@@ -254,7 +254,7 @@ function renderOptions() {
   renderWeight();
 
   const lock = state.locked[todayKey];
-  $("lock-in-label").textContent = lock?.unexpectedRest ? "Back to my rest day" : lock?.done?.length ? "Lock back in" : "Lock in";
+  $("lock-in-label").textContent = lock?.unexpectedRest && lock.mode === "rest" ? "Back to my rest day" : lock?.done?.length ? "Lock back in" : "Lock in";
   // Unexpected rest days are for training days.
   $("rest-link").hidden = Boolean(lock?.unexpectedRest) || gymDay(now) === Number(state.restDay);
 }
@@ -534,7 +534,9 @@ function renderWorkout() {
       const today = dayKey();
       const week = trainingWeek(today, Number(state.restDay)).id;
       state.achievements.weekly ??= {};
-      const weekly = weeklyBadges({ locked: state.locked, today, restDay: Number(state.restDay), awarded: state.achievements.weekly[week] });
+      // Rest-day stretching doesn't move the weekly goals, so it doesn't check.
+      const weekly = w.rest ? { badges: [], awarded: state.achievements.weekly[week] ?? [] }
+        : weeklyBadges({ locked: state.locked, today, restDay: Number(state.restDay), awarded: state.achievements.weekly[week] });
       state.achievements.weekly[week] = weekly.awarded;
       save();
       if (lock.complete && !lock.celebrated) celebrateToday(lock, weekly.badges);
@@ -543,10 +545,10 @@ function renderWorkout() {
     list.append(li);
   }
   // The scheduled rest day has no overrides: training on it takes picking a
-  // body part. An unexpected rest day only offers going back to the
-  // workout, and not once its stretches are all locked: that day is done.
+  // body part. An unexpected rest day only offers working out anyway, which
+  // stays open all day.
   const restOverride = lock.mode === "rest";
-  $("overrides").hidden = w.rest && (!restOverride || lock.complete);
+  $("overrides").hidden = w.rest && !restOverride;
   $("cardio-only").hidden = restOverride;
   $("strength-only").hidden = restOverride;
   for (const [id, mode, label] of [["cardio-only", "cardio", "Cardio only override"], ["strength-only", "strength", "Strength training only override"]]) {
@@ -555,7 +557,7 @@ function renderWorkout() {
     $(id).textContent = on ? `${label} on · tap for the full plan` : label;
   }
   $("rest-override").setAttribute("aria-pressed", "false");
-  $("rest-override").textContent = restOverride ? "Feeling better? Back to today's workout" : "Unexpected rest day override";
+  $("rest-override").textContent = restOverride ? "Feeling better? Work out anyway" : lock.unexpectedRest ? "Back to my rest day" : "Unexpected rest day override";
 }
 
 // The overrides limit the day to cardio or to lifting; tapping the one
@@ -604,19 +606,27 @@ $("rest-dialog").addEventListener("close", () => {
 
 $("rest-link").addEventListener("click", askUnexpectedRest);
 
-// The override asks first either way. Going back to the workout keeps
-// what's locked, so the stretches come back locked if the rest day does.
+// Taking the rest day asks first. "Work out anyway" keeps it as an excused
+// day: the streak is covered if the workout isn't finished, and counts if
+// it is. Either way, what's locked stays locked.
 $("rest-override").addEventListener("click", () => {
   const today = lockedWorkout();
   if (!today) return;
-  if (today.lock.mode !== "rest") {
+  const { lock } = today;
+  if (lock.mode === "rest") {
+    if (!confirm("Work out anyway? Your rest day still covers your streak if you don't finish. Finish the workout and it counts.")) return;
+    // The rest day's celebration shouldn't stop the workout's.
+    if (lock.celebrated && lock.rest) lock.celebrated = false;
+    lock.mode = null;
+  } else if (lock.unexpectedRest) {
+    lock.mode = "rest";
+  } else {
     askUnexpectedRest();
     return;
   }
-  if (!confirm("Go back to today's workout? Today won't be a rest day anymore.")) return;
-  Object.assign(today.lock, { mode: null, unexpectedRest: false, streakBreak: false });
   save();
   renderWorkout();
+  window.scrollTo({ top: 0 });
 });
 
 function lockOut() {
