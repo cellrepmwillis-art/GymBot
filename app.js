@@ -4,7 +4,7 @@ import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weekly
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 7:00 PM";
+const VERSION = "2026-10-24 · 8:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -440,7 +440,8 @@ function renderWorkout() {
   const done = new Set(lock.done.filter((id) => ids.has(id)));
   const { lb, from } = weight();
   lock.burned = caloriesBurned(w.items, [...done], lb);
-  lock.complete = done.size === w.items.length;
+  // A day with nothing to lock (an unexpected rest day) isn't "complete".
+  lock.complete = w.items.length > 0 && done.size === w.items.length;
   lock.rest = w.rest;
   // For the weekly goals: a gym day is anything locked past the warm-up;
   // cardio minutes count warm-ups, cardio and runs, vigorous ones (6 METs
@@ -453,7 +454,12 @@ function renderWorkout() {
 
   $("locked-count").textContent = `${done.size} of ${w.items.length} locked`;
   $("burned").textContent = `🔥 ${lock.burned.toLocaleString()} cal burned`;
-  $("bar-fill").style.width = `${(done.size / w.items.length) * 100}%`;
+  $("bar-fill").style.width = w.items.length ? `${(done.size / w.items.length) * 100}%` : "0";
+  const nothingToLock = w.items.length === 0;
+  $("progress").hidden = nothingToLock;
+  $("rest-up").hidden = !nothingToLock;
+  $("lock-hint").hidden = nothingToLock;
+  $("plan-minutes").hidden = nothingToLock;
   $("burned-note").textContent = from === "default"
     ? `Estimated for ${DEFAULT_WEIGHT_LB} lb. Add your weight in Settings for a better number.`
     : `Estimated for ${lb} lb${from === "cookbot" ? " (from CookBot)" : ""}.`;

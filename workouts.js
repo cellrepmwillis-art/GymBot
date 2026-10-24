@@ -422,14 +422,16 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
 
   // The rest day is stretching only: nothing that reads as a workout. A body
   // part picked under Focus is the only way to train on it.
+  // An unexpected rest day has nothing to lock at all, so nothing nudges
+  // someone who's sick or worn out into doing more.
   if (!split && !runDay) {
-    const items = REST_STRETCHES.map(([name, text, minutes], i) => ({ id: `stretch${i}`, kind: "stretch", name, text, minutes, met: MET.stretching }));
+    const items = mode === "rest" ? [] : REST_STRETCHES.map(([name, text, minutes], i) => ({ id: `stretch${i}`, kind: "stretch", name, text, minutes, met: MET.stretching }));
     return {
       ...base,
       rest: true,
       mode: mode === "rest" ? "rest" : null,
       title: mode === "rest" ? "Unexpected rest day" : "Rest day",
-      focus: mode === "rest" ? "Stretching only. Back to locking in tomorrow." : `Stretching only. Recover for ${DAY_NAMES[(day + 1) % 7]}.`,
+      focus: mode === "rest" ? "Take it easy today." : `Stretching only. Recover for ${DAY_NAMES[(day + 1) % 7]}.`,
       minutes: items.reduce((total, item) => total + item.minutes, 0),
       items,
       notes: [
