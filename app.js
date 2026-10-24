@@ -5,7 +5,7 @@ import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-25 · 9:00 AM";
+const VERSION = "2026-10-25 · 10:00 AM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -79,6 +79,13 @@ const dateOfKey = (key, hour = 10, minute = 0) => {
   const [y, m, d] = key.split("-").map(Number);
   return new Date(y, m - 1, d, hour, minute);
 };
+
+// A starting weight from Settings entered the same day as the first
+// weigh-in used to win over the scale; the weigh-in is the start.
+{
+  const first = state.weighIns[0];
+  if (first && state.weightStart?.day === first.day && state.weightStart.lb !== first.lb) state.weightStart = { ...first };
+}
 
 // Before the day ended at midnight it ended at 3am, so a session started
 // after midnight was saved under the day before with the next day's time.
@@ -370,8 +377,8 @@ function renderWeight() {
   const change = latest.lb - start.lb;
   const moved = change === 0 ? "no change" : `${change < 0 ? "down" : "up"} ${Math.abs(change).toFixed(1)} lb`;
   $("weigh-summary").textContent = start.day === latest.day
-    ? `Starting at ${start.lb} lb on ${shortDate(start.day)}. Log again next week to see how it's moving.`
-    : `Last weigh-in ${start.lb} lb on ${shortDate(start.day)} · now ${latest.lb} lb · ${moved}${span}`;
+    ? `Starting at ${latest.lb} lb on ${shortDate(latest.day)}. Log again next week to see how it's moving.`
+    : `${state.weighIns.some((w) => w.day === start.day && w.lb === start.lb) ? "Last weigh-in" : "Started at"} ${start.lb} lb on ${shortDate(start.day)} · now ${latest.lb} lb · ${moved}${span}`;
   $("weigh-verdict").hidden = !result;
   if (!result) return;
   $("weigh-verdict").dataset.tone = result.tone;
@@ -422,11 +429,18 @@ function logWeight(lb) {
   $("weigh-wait").hidden = true;
   const today = dayKey();
   // Compare with the last weigh-in from an earlier day (so fixing today's
-  // number keeps the comparison); before the first one, with the weight from
-  // Settings, or else this weigh-in itself.
+  // number keeps the comparison). Before there is one, with the weight from
+  // Settings if it was entered on an earlier day; a weight from Settings
+  // entered today gives way to the scale, so this weigh-in is the start.
   const previous = previousWeighIn();
   if (previous) state.weightStart = { ...previous };
-  else if (!state.weightStart) state.weightStart = state.weightLb > 0 ? { day: state.weightSetDay ?? today, lb: state.weightLb } : { day: today, lb };
+  else if (state.weightStart?.day < today) {
+    // Keep the earlier weight from Settings.
+  } else if (!state.weighIns.length && state.weightLb > 0 && state.weightSetDay < today) {
+    state.weightStart = { day: state.weightSetDay, lb: state.weightLb };
+  } else {
+    state.weightStart = { day: today, lb };
+  }
   state.weighIns = [...state.weighIns.filter((w) => w.day !== today), { day: today, lb }].slice(-400);
   // The latest weight is also what calories burned use.
   state.weightLb = lb;
