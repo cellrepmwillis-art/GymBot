@@ -376,3 +376,6 @@ main[hidden], .dock[hidden] { display: none; }
 .edit-routine { display: block; margin-top: 12px; font-weight: 600; }
 .edit-routine[hidden] { display: none; }
 #routine-dialog select { margin-bottom: 0; }
+
+.routine-part { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--muted); white-space: nowrap; }
+.routine-part select { width: auto; padding: 6px 8px; }

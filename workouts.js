@@ -500,7 +500,7 @@ const MAX_CHOICES = 3;
 // lifting, as one session. `routine` is { cardio, minutes, strength } (keys
 // of ROUTINE_CARDIO and ROUTINE_STRENGTH). It applies on training days when
 // no body part is picked and no override is on; the rest day stays a rest
-// day.
+// day. `routine.part` swaps the day's body part for another, or "none".
 export function suggest(args = {}) {
   const { routine, target, mode, extra, date = new Date(), restDay = 0, gym = "pf" } = args;
   let cardio = routine && ROUTINE_CARDIO[routine.cardio];
@@ -511,9 +511,12 @@ export function suggest(args = {}) {
   const position = weekPosition(gymDay(date), Number(restDay) || 0);
   if (!cardio || target || mode || extra || position === 0) return suggestDay(args);
   const minutes = Number(routine.minutes) || 30;
-  const lifting = routine.strength === "fullBody" ? (position % 2 === 1 ? "fullBody" : null)
+  const turn = routine.strength === "fullBody" ? (position % 2 === 1 ? "fullBody" : null)
     : routine.strength === "none" ? null
     : ROUTINE_ROTATION[(position - 1) % ROUTINE_ROTATION.length];
+  // A body part picked for the day ("none" for just the cardio) replaces
+  // the routine's turn.
+  const lifting = routine.part === "none" ? null : TARGETS[routine.part] ? routine.part : turn;
   const w = suggestDay({ ...args, target: lifting, mode: lifting ? null : "cardio" });
   // The routine's cardio replaces the plan's.
   const cardioItem = w.items.find((item) => item.kind === "cardio" || item.kind === "run");
@@ -525,6 +528,8 @@ export function suggest(args = {}) {
   return {
     ...w,
     routine: true,
+    part: lifting ?? "none",
+    turn: turn ?? "none",
     mode: null,
     run: null,
     cardio: text,
@@ -609,16 +614,20 @@ function suggestDay({ date = new Date(), aim = "maintain", gym = "pf", shuffle =
   const superset = coach.superset === "never" ? false
     : coach.superset === "always" ? window.crowd !== "packed" || window.key === "lunch"
     : window.key === "lunch" || (plan === "cut" && window.crowd !== "packed");
+  // An exercise already planned earlier in the day isn't planned twice (the
+  // leg press standing in for the squat, then the leg press slot).
+  const used = new Set();
+  const fresh = (planned, options) => (used.has(planned.name) ? options.find((option) => !used.has(option.name)) ?? planned : planned);
   const exercises = slots.map((options, i) => {
     let planned;
     let others;
     if (coach.equipment) {
       const rank = (option) => coach.equipment.indexOf(equipmentKind(option.name));
       const preferred = [...options].sort((a, b) => rank(a) - rank(b));
-      planned = pick(preferred, shuffle);
+      planned = fresh(pick(preferred, shuffle), preferred);
       others = preferred.filter((option) => option !== planned);
     } else {
-      planned = pick(options, shuffle);
+      planned = fresh(pick(options, shuffle), options);
       // Machine, then free weight, then other, one of each before any repeats.
       const sorted = options.filter((option) => option !== planned).sort((a, b) => equipmentRank(a.name) - equipmentRank(b.name));
       const firstOfKind = sorted.filter((option, k) => k === 0 || equipmentRank(option.name) !== equipmentRank(sorted[k - 1].name));
@@ -627,6 +636,7 @@ function suggestDay({ date = new Date(), aim = "maintain", gym = "pf", shuffle =
     const choices = [planned, ...others].slice(0, MAX_CHOICES);
     const swapped = swaps[i] ?? 0;
     const choice = choices[swapped % choices.length];
+    used.add(choice.name);
     const alternative = choices.length > 1 ? choices[(swapped + 1) % choices.length].name : null;
     const main = i === 0;
     let { sets, reps, rest } = main && !split.small ? scheme.main : scheme.accessory;

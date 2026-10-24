@@ -5,7 +5,7 @@ import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-25 · 12:30 PM";
+const VERSION = "2026-10-25 · 1:30 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -512,7 +512,9 @@ $("lock-in").addEventListener("click", () => {
   const previous = state.locked[today];
   const focus = todaysTarget();
   const routine = focus ? null : activeRoutine();
-  const same = previous && (previous.focus ?? null) === focus && JSON.stringify(previous.routine ?? null) === JSON.stringify(routine);
+  // A body part picked for the day under User selected stays too.
+  const { part, ...previousRoutine } = previous?.routine ?? {};
+  const same = previous && (previous.focus ?? null) === focus && JSON.stringify(previous.routine ? previousRoutine : null) === JSON.stringify(routine);
   // An unexpected rest day stays one whatever the focus: "Back to my rest
   // day" goes back to it, and a focus picked meanwhile waits for "Work out
   // anyway".
@@ -522,7 +524,7 @@ $("lock-in").addEventListener("click", () => {
     focus,
     shuffle: same ? previous.shuffle ?? 0 : 0,
     mode: resting ? "rest" : same ? previous.mode ?? null : null,
-    routine: routine ? { ...routine } : null,
+    routine: routine ? { ...routine, ...(same && part ? { part } : {}) } : null,
     extra: previous?.extra ?? [],
     total: previous?.total,
     celebrated: same ? previous.celebrated ?? false : false,
@@ -536,6 +538,31 @@ $("lock-in").addEventListener("click", () => {
   save();
   render();
   window.scrollTo({ top: 0 });
+});
+
+// User selected: the day's body part, from a drop-down under the title.
+// The routine's turn is first and marked; picking it again clears the pick.
+function renderRoutinePart(lock, w) {
+  const select = $("routine-part");
+  $("routine-part-row").hidden = !(w.routine && lock.routine);
+  if (!w.routine || !lock.routine) return;
+  const label = (key) => (key === "none" ? "Just the cardio" : TARGET_LABELS[key]);
+  const keys = [w.turn, ...[...Object.keys(TARGET_LABELS), "none"].filter((key) => key !== w.turn)];
+  select.replaceChildren(...keys.map((key) => new Option(key === w.turn ? `${label(key)} (today's turn)` : label(key), key)));
+  select.value = w.part;
+}
+
+$("routine-part").addEventListener("change", () => {
+  const today = lockedWorkout();
+  if (!today?.lock.routine) return;
+  const { lock, w } = today;
+  const part = $("routine-part").value;
+  lock.routine = { ...lock.routine };
+  if (part === w.turn) delete lock.routine.part;
+  else lock.routine.part = part;
+  lock.swaps = {};
+  save();
+  render();
 });
 
 // ---- Rest-day screen ----
@@ -580,6 +607,7 @@ function renderWorkout() {
   $("plan-title").textContent = w.rest ? w.title : displayName(w);
   $("plan-focus").textContent = w.rest ? w.focus : [`${w.day} ${w.window.label.toLowerCase()}`, displayDetail(w)].filter(Boolean).join(" · ");
   $("plan-minutes").textContent = `~${w.minutes} min`;
+  renderRoutinePart(lock, w);
 
   const notes = w.notes;
   // The trainer's own notes, then everyday protein, water and sleep.

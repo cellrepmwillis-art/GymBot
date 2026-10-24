@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { suggest, timeWindow, gymDay, TARGETS, caloriesBurned, equipmentRank, equipmentKind } from "./workouts.js";
+import { suggest, timeWindow, gymDay, TARGETS, TARGET_LABELS, TRAINERS, caloriesBurned, equipmentRank, equipmentKind } from "./workouts.js";
 import { dayKey, nextReset } from "./day.js";
 
 // 2026-10-19 is a Monday.
@@ -425,6 +425,22 @@ test("my routine: 12-3-30 every training day plus one body part", () => {
   assert.equal(suggest({ date: at(0, 10), routine, mode: "cardio" }).routine, undefined);
 });
 
+test("user selected: a body part picked for the day replaces the turn", () => {
+  const routine = { cardio: "12-3-30", minutes: 45, strength: "rotate" };
+  const saturday = suggest({ date: at(5, 12), routine });
+  assert.equal(saturday.title, "Triceps + 12-3-30");
+  assert.equal(saturday.turn, "triceps");
+  const legs = suggest({ date: at(5, 12), routine: { ...routine, part: "legs" } });
+  assert.equal(legs.title, "Legs + 12-3-30");
+  assert.equal(legs.part, "legs");
+  assert.equal(legs.turn, "triceps");
+  const cardioOnly = suggest({ date: at(5, 12), routine: { ...routine, part: "none" } });
+  assert.equal(cardioOnly.title, "12-3-30");
+  assert.ok(!cardioOnly.items.some((i) => i.kind === "lift"));
+  // Full body's off days can lift too.
+  assert.equal(suggest({ date: at(1, 10), routine: { ...routine, strength: "fullBody", part: "back" } }).title, "Back + 12-3-30");
+});
+
 test("my routine: full body every other day, cardio between", () => {
   const routine = { cardio: "walk", minutes: 30, strength: "fullBody" };
   const titles = [0, 1, 2, 3, 4, 5].map((d) => suggest({ date: at(d, 10), routine, gym: "outdoor" }).title);
@@ -446,4 +462,17 @@ test("my routine's cardio fits the gym", () => {
   const routine = { cardio: "12-3-30", minutes: 45, strength: "none" };
   assert.match(suggest({ date: at(0, 10), routine, gym: "outdoor" }).cardio, /^45 min brisk walk/);
   assert.match(suggest({ date: at(0, 10), routine: { ...routine, cardio: "hike" }, gym: "pf" }).cardio, /^45 min incline treadmill walk/);
+});
+
+test("no exercise is planned twice in a day", () => {
+  for (const trainer of Object.keys(TRAINERS)) {
+    for (const target of [null, ...Object.keys(TARGET_LABELS)]) {
+      for (const gym of ["pf", "af", "outdoor"]) {
+        for (let d = 0; d < 6; d++) {
+          const names = suggest({ date: at(d, 17), trainer, target, gym, mode: "strength" }).items.filter((i) => i.kind === "lift").map((i) => i.name);
+          assert.equal(new Set(names).size, names.length, `${trainer} ${target} ${gym} ${d}: ${names}`);
+        }
+      }
+    }
+  }
 });
