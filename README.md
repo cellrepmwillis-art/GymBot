@@ -4,7 +4,7 @@ A workout picker that runs on your phone. It opens on an options screen: today's
 
 On the workout screen every part of the session (warm-up, run, each exercise, cardio) has an open padlock. Tap it when you finish that part and it locks. Locked parts add up to **calories burned**, shown at the top along with how many parts you've locked. Equipment is what a typical American gym has (Planet Fitness, Anytime Fitness and the like).
 
-- **The week:** push, pull, legs, twice, Monday to Saturday. Sunday is a rest day: about 11 minutes of gentle stretching and nothing else, so the day stays a recovery day. To train anyway, you have to pick a body part under Focus. You can pick a different rest day in Settings; the six workouts then run in order on the days after it (with Wednesday off, Thursday is Push A and Tuesday Legs B), and the marathon week moves the same way.
+- **The week:** with the **Standard** setting (what you get without choosing anything), full body on Monday, Wednesday and Friday, mostly on machines with 2 sets of 10–12, and a 40-minute walk or easy cardio on Tuesday, Thursday and Saturday. That's how ACSM and the HHS guidelines start people out, it meets the weekly guidelines on its own (150+ cardio minutes, strength 3 days), and it's fine to stay on for good: Standard carries the most tips and safeguards, like finding machine settings, starting light, when to add weight, and soreness versus pain. For people used to training, **Push, pull, legs** (under AI Trainer) runs push, pull, legs twice, Monday to Saturday. Sunday is a rest day: about 11 minutes of gentle stretching and nothing else, so the day stays a recovery day. To train anyway, you have to pick a body part under Focus. You can pick a different rest day in Settings; the six workouts then run in order on the days after it (with Wednesday off, Thursday is Push A and Tuesday Legs B), and the marathon week moves the same way.
 - **Rest-day reminder:** opening the app on your rest day shows a quote about rest with **Exit** and **Lock in anyway**. Exit leaves you be (it closes the app where the phone allows it). Lock in anyway goes to the options screen so you can pick a body part and train; the reminder doesn't come back that day.
 
   | Mon | Tue | Wed | Thu | Fri | Sat | Sun |
@@ -39,7 +39,8 @@ On the workout screen every part of the session (warm-up, run, each exercise, ca
 
   | Trainer | What changes | Based on |
   |---------|--------------|----------|
-  | Off | The standard plan above | |
+  | Standard | The plan above: full body 3 days, cardio days between, machines first, 2 sets | ACSM, HHS |
+  | Push, pull, legs | Push, pull, legs twice a week, six days on (the tables below describe this week) | |
   | Bodybuilder | 6–10 reps on the main lift, 8–12 (10–15 on a cut) on the rest, 60–90 sec rests, sets to 1–2 reps short of failure | ACSM progression models, Bodybuilding.com, Schoenfeld's hypertrophy research |
   | Powerlifter | Main lift 4–5 × 3–5 with 3–5 min rests, deadlift added on Pull A, 5 exercises, no supersets, light cardio. Suggests an Anytime Fitness style gym, since Planet Fitness has no barbells for squats or deadlifts | ACSM, NSCA |
   | Marathon runner | A running week: easy run + upper body, speed intervals, easy run + single-leg strength, tempo run + upper body, cross-training + core, long run, Sunday off. Lifting is 4 exercises, done after the run | ACSM, Runner's World, the 80/20 guideline |
@@ -54,7 +55,7 @@ On the workout screen every part of the session (warm-up, run, each exercise, ca
 
   | Trainer | Strength | Cardio | Most in a day |
   |---|---|---|---|
-  | Off, GLP-1, powerlifter | 1 | 1 | 2 |
+  | Standard, Push pull legs, GLP-1, powerlifter | 1 | 1 | 2 |
   | Bodybuilder | 2 | 1 | 3 |
   | Weight loss | 1 | 2 | 3 |
   | Marathon, or the Outdoors & home gym | 2 | 3 | 4 |

@@ -5,7 +5,7 @@ import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-25 · 11:00 AM";
+const VERSION = "2026-10-25 · 12:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -155,7 +155,7 @@ function updateTotals(day) {
 }
 
 // Short trainer names for the chip on the options screen.
-const TRAINER_CHIPS = { bodybuilder: "Bodybuilder", powerlifter: "Powerlifter", marathon: "Marathon", weightLoss: "Weight loss", glp1: "GLP-1" };
+const TRAINER_CHIPS = { ppl: "PPL", bodybuilder: "Bodybuilder", powerlifter: "Powerlifter", marathon: "Marathon", weightLoss: "Weight loss", glp1: "GLP-1" };
 
 // The split's "Pull A" style names stay out of sight. A split day shows what
 // it trains ("Back and biceps") with its emphasis ("Back width first") as the

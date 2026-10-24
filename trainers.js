@@ -16,6 +16,9 @@
 //   health(ctx)    food, recovery and medical notes, shown on their own
 //   sessions       sessions a day, the day's plan included: { strength,
 //                  cardio, total } (see sessionLimits)
+//   fullBodyWeek   full body on the 1st, 3rd and 5th training days and a
+//                  cardio day between (Standard)
+//   cardioDayNotes tips for those cardio days
 //   restTips(plan) advice for the rest day (the rest day itself is always
 //                  just stretching; see suggest in workouts.js)
 // ctx is { plan, split, window, gym, shotSoon }.
@@ -46,9 +49,39 @@ const easyRun = (ctx, extra = 0) => {
 };
 
 export const TRAINERS = {
+  // Standard: what someone gets without picking anything, so it carries
+  // the most guidance. Full body three days a week with cardio between,
+  // machines first, two sets, the way ACSM and the HHS guidelines start
+  // people out, and something anyone can keep doing for good.
   none: {
-    label: "Off (standard plan)",
-    blurb: "Push, pull, legs twice a week, shaped by your aim.",
+    label: "Standard",
+    blurb: "Full body 3 days a week, mostly on machines, with walks or easy cardio between. The most tips and safeguards, and fine to stay on for good.",
+    sources: ["ACSM guidelines for resistance training", "HHS Physical Activity Guidelines for Americans"],
+    scheme: () => ({
+      main: { sets: 2, reps: "10–12", rest: "90 sec" },
+      accessory: { sets: 2, reps: "10–15", rest: "60–90 sec" },
+    }),
+    // Machines guide the movement while you learn it.
+    equipment: ["machine", "smith", "dumbbell", "cable", "other", "barbell"],
+    superset: "never",
+    fullBodyWeek: true,
+    notes: (ctx) => [
+      ctx.gym === "outdoor" ? "New to an exercise? Tap See example before your first set." : "New to a machine? The seat and pin settings are on a sticker, and staff are happy to show you.",
+      ctx.gym === "outdoor" ? "Start with the easier version and move to the harder swap once 15 reps feel easy." : "Start light: pick a weight you could lift 15 times and do 10–12 with good form.",
+      "When every set reaches the top of its reps, add a little weight (or the harder swap) next time.",
+      "Sore for a day or two afterward is normal. Sharp or joint pain isn't: stop that exercise.",
+    ],
+    cardioDayNotes: [
+      "Walking counts. The weekly goal is 150 minutes, a little at a time.",
+      "No lifting today on purpose: muscles recover and grow between full-body days.",
+      "Too much in one go? Split it into two shorter walks.",
+    ],
+  },
+
+  // The push, pull, legs week, for people used to training.
+  ppl: {
+    label: "Push, pull, legs",
+    blurb: "Push, pull, legs twice a week, six days on, shaped by your aim. For people used to training.",
     sources: [],
   },
 
@@ -201,6 +234,7 @@ export const TRAINERS = {
 // Outdoors & home gym allow up to four, short runs and walks included.
 const SESSIONS = {
   none: { strength: 1, cardio: 1, total: 2 },
+  ppl: { strength: 1, cardio: 1, total: 2 },
   powerlifter: { strength: 1, cardio: 1, total: 2 },
   bodybuilder: { strength: 2, cardio: 1, total: 3 },
   weightLoss: { strength: 1, cardio: 2, total: 3 },

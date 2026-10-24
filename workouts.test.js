@@ -105,11 +105,37 @@ test("arms and abs use the lighter rep range; holds keep their own", () => {
   assert.equal(abs.exercises[2].rest, "45 sec");
 });
 
-test("trainer off matches the standard plan", () => {
+test("push, pull, legs is the plan these tests use by default; unknown trainers get Standard", () => {
   const a = suggest({ date: at(0, 10), aim: "gain" });
-  const b = suggest({ date: at(0, 10), aim: "gain", trainer: "none" });
+  const b = suggest({ date: at(0, 10), aim: "gain", trainer: "ppl" });
   assert.deepEqual(a, b);
   assert.equal(suggest({ date: at(0, 10), trainer: "bogus" }).trainer, "none");
+});
+
+test("Standard: full body 3 days a week on machines, cardio days between", () => {
+  const week = [0, 1, 2, 3, 4, 5].map((d) => suggest({ date: at(d, 17), trainer: "none", aim: "maintain" }));
+  assert.deepEqual(week.map((w) => w.title), ["Full body", "Cardio day", "Full body", "Cardio day", "Full body", "Cardio day"]);
+  const monday = week[0];
+  assert.deepEqual(monday.exercises.map((e) => e.name), ["Leg press", "Chest press machine", "Lat pulldown", "Lying leg curl", "Shoulder press machine", "Cable crunch"]);
+  assert.ok(monday.exercises.every((e) => e.sets === 2));
+  assert.equal(monday.exercises[0].reps, "10–12");
+  assert.equal(monday.superset, false);
+  assert.ok(monday.notes.some((n) => /Start light/.test(n)));
+  assert.ok(monday.notes.some((n) => /Sharp or joint pain/.test(n)));
+  const tuesday = week[1];
+  assert.equal(tuesday.mode, null);
+  assert.deepEqual(tuesday.items.map((i) => i.id), ["warmup", "cardio"]);
+  assert.match(tuesday.cardio, /^40 min brisk walk/);
+  assert.ok(tuesday.notes.some((n) => /Walking counts/.test(n)));
+  // A week of it meets the guidelines: 150 cardio minutes and 2+ strength days.
+  const cardio = week.reduce((sum, w) => sum + w.items.filter((i) => i.kind === "warmup" || i.kind === "cardio").reduce((m, i) => m + i.minutes, 0), 0);
+  assert.ok(cardio >= 150, `${cardio}`);
+  // Overrides still work: strength only on a cardio day is full body, cardio only on a lifting day is cardio.
+  assert.equal(suggest({ date: at(1, 17), trainer: "none", mode: "strength" }).title, "Full body");
+  assert.equal(suggest({ date: at(0, 17), trainer: "none", mode: "cardio" }).title, "Cardio only");
+  // Picking a body part still works, and the rest day is a rest day.
+  assert.equal(suggest({ date: at(1, 17), trainer: "none", target: "chest" }).title, "Chest day");
+  assert.equal(suggest({ date: at(6, 17), trainer: "none" }).rest, true);
 });
 
 test("powerlifter: heavy low reps, long rests, deadlift on Pull A", () => {
@@ -245,7 +271,7 @@ test("equipment ranks", () => {
 test("each trainer starts with its favorite equipment", () => {
   const first = (trainer, gym, day = 0, i = 0) => suggest({ date: at(day, 10), trainer, gym }).exercises[i];
   // Push A's first exercise: barbell, Smith machine or dumbbell bench press.
-  assert.equal(first("none", "af").name, "Barbell bench press");
+  assert.equal(first("ppl", "af").name, "Barbell bench press");
   assert.equal(first("powerlifter", "af").name, "Barbell bench press");
   assert.equal(first("powerlifter", "pf").name, "Smith machine bench press");
   assert.equal(first("glp1", "af").name, "Chest press machine");

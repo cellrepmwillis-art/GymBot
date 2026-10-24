@@ -374,10 +374,16 @@ function outdoorCardio({ plan, coachKey, split, window, shotSoon }) {
 
 // The "Cardio only" override: a warm-up and one longer cardio session in
 // place of the lifting. On a run day it's the run by itself.
-function cardioOnly({ base, coachKey, plan, window, gym, shotSoon, runDay, ctx, split, target }) {
+// With `planned` (a trainer with a cardio day in its week), it's that day.
+function cardioOnly({ base, coachKey, plan, window, gym, shotSoon, runDay, ctx, split, target, planned }) {
   const long = window.budget >= 6 ? 45 : 30;
   let session;
-  if (runDay) session = runDay.run(ctx);
+  if (planned) {
+    const minutes = window.budget >= 6 ? 40 : 25;
+    session = gym === "outdoor" ? [minutes, `${minutes} min brisk walk at the park or around the track, at a pace where you can talk but not sing.`, MET.briskWalk]
+      : plan === "cut" ? [minutes, `${minutes} min incline treadmill walk: start around a 5% incline at 3 mph and go up as it gets easy.`, MET.inclineWalk]
+      : [minutes, `${minutes} min brisk walk on the treadmill (or outside), or the elliptical, at a pace where you can talk but not sing.`, MET.briskWalk];
+  } else if (runDay) session = runDay.run(ctx);
   else if (coachKey === "marathon") session = [long, `Easy run, ${long} min, at a pace you could talk at.`, MET.easyRun];
   else if (gym === "outdoor") session = coachKey === "glp1" && shotSoon
     ? [20, "Easy 20 min walk. Skip it if you feel sick.", MET.easyWalk]
@@ -396,16 +402,16 @@ function cardioOnly({ base, coachKey, plan, window, gym, shotSoon, runDay, ctx, 
     { id: "warmup", kind: "warmup", name: "Warm-up", text: warmupText, minutes: 5, met: MET.warmup },
     { id: runDay ? "run" : "cardio", kind: runDay ? "run" : "cardio", name: runDay ? runDay.title.split(" + ")[0] : "Cardio", text, minutes, met },
   ];
-  const notes = ["Cardio only today, by your choice. Tomorrow is back to the full plan."];
+  const notes = planned ? [...planned.cardioDayNotes] : ["Cardio only today, by your choice. Tomorrow is back to the full plan."];
   if (window.key === "late" && gym === "pf") notes.push("Many Planet Fitness clubs aren't open 24 hours anymore, so check your club's hours.");
   return {
     ...base,
     rest: false,
-    mode: "cardio",
+    mode: planned ? null : "cardio",
     split: split?.key ?? null,
     target: TARGETS[target] ? target : null,
-    title: "Cardio only",
-    focus: "Cardio only",
+    title: planned ? "Cardio day" : "Cardio only",
+    focus: planned ? "Walk or easy cardio between full-body days" : "Cardio only",
     minutes: Math.round((5 + minutes) / 5) * 5,
     run: runDay ? text : null,
     warmup: warmupText,
@@ -528,7 +534,7 @@ export function suggest(args = {}) {
   };
 }
 
-function suggestDay({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, swaps = {}, mode = null, target = null, trainer = "none", shotDay = null, restDay = 0, extra = false } = {}) {
+function suggestDay({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, swaps = {}, mode = null, target = null, trainer = "ppl", shotDay = null, restDay = 0, extra = false } = {}) {
   const plan = AIMS[aim] ? aim : "maintain";
   const coachKey = TRAINERS[trainer] ? trainer : "none";
   const coach = TRAINERS[coachKey];
@@ -560,6 +566,13 @@ function suggestDay({ date = new Date(), aim = "maintain", gym = "pf", shuffle =
     split = null;
     runDay = null;
   }
+  // Standard: full body on the 1st, 3rd and 5th training days, a cardio day
+  // between. Strength only on a cardio day lifts full body too.
+  let cardioDay = false;
+  if (coach.fullBodyWeek && split && !TARGETS[target] && !extra && mode !== "rest") {
+    if (weekPosition(day, off) % 2 === 1 || mode === "strength") split = { key: "fullBody", ...TARGETS.fullBody };
+    else if (mode !== "cardio") cardioDay = true;
+  }
   if (split && coach.mainSwap?.[split.key] && !TARGETS[target] && gym !== "outdoor") split = { ...split, slots: [coach.mainSwap[split.key], ...split.slots.slice(1)] };
   // Outdoors & home: the same day, with no-gym exercises.
   if (split && gym === "outdoor") split = { ...split, slots: OUTDOOR[split.key] ?? split.slots };
@@ -587,6 +600,7 @@ function suggestDay({ date = new Date(), aim = "maintain", gym = "pf", shuffle =
   }
 
 
+  if (cardioDay) return { ...cardioOnly({ base, coachKey, plan, window, gym, shotSoon, runDay, ctx, split, target, planned: coach }), health: (coach.health?.(ctx) ?? []).slice(0, MAX_TIPS), extra };
   if (mode === "cardio") return { ...cardioOnly({ base, coachKey, plan, window, gym, shotSoon, runDay, ctx, split, target }), health: (coach.health?.(ctx) ?? []).slice(0, MAX_TIPS), extra };
 
   const budget = Math.min(window.budget, coach.maxLifts ?? 6, shotSoon ? 4 : 6);
