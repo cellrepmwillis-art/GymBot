@@ -180,8 +180,7 @@ export const TRAINERS = {
     notes: (ctx) => [
       ...(ctx.shotSoon ? ["Shot day or the day after: nausea and low energy are most common now, so this is a lighter session. If you feel unwell, just walk."] : []),
       "Lifting is the priority. In the big trials, about a quarter to over a third of the weight lost on these drugs was lean mass; strength training helps keep it.",
-      "Eat a small meal with protein 1–2 hours before. Don't train on an empty stomach, and hit your protein goal (CookBot tracks it).",
-      "Drink water before and during. Nausea, vomiting and diarrhea can dehydrate you.",
+      "Eat a small meal with protein 1–2 hours before and drink water before and during: an empty stomach and dehydration (common with nausea) make workouts harder. Hit your protein goal too; CookBot tracks it.",
       "If you feel dizzy, shaky or faint, stop and eat something. The risk of low blood sugar is higher if you also take insulin or a sulfonylurea.",
       "Not medical advice. Check with your prescriber before starting a new program, especially after a dose increase.",
     ],

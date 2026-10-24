@@ -375,6 +375,20 @@ function cardioOnly({ base, coachKey, plan, window, gym, shotSoon, runDay, ctx, 
   };
 }
 
+// At most this many tips a session.
+export const MAX_TIPS = 5;
+
+// The session's tips: the time-of-day note, the trainer's (or the aim's)
+// tips, then the Planet Fitness hours note. Over MAX_TIPS, the general
+// notes go first (hours, then time of day); the trainer's tips, safety ones
+// included, stay.
+function limitTips(placeNote, coachNotes, hoursNote) {
+  const notes = [placeNote, ...coachNotes, hoursNote].filter(Boolean);
+  if (notes.length > MAX_TIPS && hoursNote) notes.splice(notes.indexOf(hoursNote), 1);
+  if (notes.length > MAX_TIPS && placeNote) notes.splice(notes.indexOf(placeNote), 1);
+  return notes.slice(0, MAX_TIPS);
+}
+
 const pick = (options, i) => options[((i % options.length) + options.length) % options.length];
 
 // Sets, reps and rest from the aim, with the trainer's changes on top.
@@ -570,8 +584,8 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
     : window.key === "early" || window.key === "late" || window.key === "evening" ? "If it's dark out, stick to well-lit paths, or do the workout at home."
     : "A park bench, a patch of grass and a backpack with a few books in it are all the gym you need.";
   const tip = gym === "outdoor" ? OUTDOOR_TIPS[plan] : scheme.tip;
-  const notes = [...(split ? [placeNote] : []), ...(coach.notes?.(ctx) ?? [tip])];
-  if (window.key === "late" && gym === "pf") notes.push("Many Planet Fitness clubs aren't open 24 hours anymore, so check your club's hours.");
+  const hoursNote = window.key === "late" && gym === "pf" ? "Many Planet Fitness clubs aren't open 24 hours anymore, so check your club's hours." : null;
+  const notes = limitTips(split ? placeNote : null, coach.notes?.(ctx) ?? [tip], hoursNote);
 
   return {
     ...base,

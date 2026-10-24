@@ -366,3 +366,14 @@ test("extra sessions are just cardio or just lifting, even on a run day", () => 
   assert.equal(back.title, "Back day");
   assert.ok(back.items.every((i) => i.kind === "warmup" || i.kind === "lift"));
 });
+
+test("never more than five tips, and safety tips stay", () => {
+  for (const trainer of ["none", "bodybuilder", "powerlifter", "marathon", "weightLoss", "glp1"]) for (const gym of ["pf", "af", "outdoor"]) for (let d = 0; d < 7; d++) for (const hour of [4, 7, 10, 12, 17, 21, 23]) for (const mode of [null, "cardio", "strength"]) {
+    const w = suggest({ date: at(d, hour), trainer, gym, mode, shotDay: d, aim: "gain" });
+    assert.ok(w.notes.length <= 5, `${trainer} ${gym} ${d} ${hour}: ${w.notes.length}`);
+    if (trainer === "glp1" && !w.rest && !w.mode) {
+      assert.ok(w.notes.some((n) => n.startsWith("Not medical advice")));
+      assert.ok(w.notes.some((n) => n.startsWith("If you feel dizzy")));
+    }
+  }
+});
