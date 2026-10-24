@@ -12,7 +12,8 @@
 //                  equipmentKind in workouts.js): each exercise starts with
 //                  the most preferred choice the gym has, and swaps follow
 //                  the same order
-//   notes(ctx)     tips shown with the workout
+//   notes(ctx)     training tips shown with the workout
+//   health(ctx)    food, recovery and medical notes, shown on their own
 //   sessions       sessions a day, the day's plan included: { strength,
 //                  cardio, total } (see sessionLimits)
 //   restTips(plan) advice for the rest day (the rest day itself is always
@@ -64,8 +65,8 @@ export const TRAINERS = {
     notes: () => [
       "Take the last set of each exercise to 1–2 reps short of failure.",
       "Control the lowering part of every rep (about 2 seconds).",
-      "Sleep 7–9 hours; that's when muscle is built.",
     ],
+    health: () => ["Sleep 7–9 hours; that's when muscle is built."],
   },
 
   powerlifter: {
@@ -148,9 +149,9 @@ export const TRAINERS = {
     notes: (ctx) => [
       "Guidelines call for 150–300 min of moderate cardio a week plus strength training twice. To lose weight, ACSM suggests working up to 200–300 min a week; this plan gets you there.",
       "Aim for 8,000–10,000 steps a day outside the gym too.",
-      "Food does most of the work. Keep your calorie goal in CookBot.",
       ...(ctx.plan === "gain" ? ["Your aim is set to Gain. For weight loss, set Aim to Cut in Settings."] : []),
     ],
+    health: () => ["Food does most of the work. Keep your calorie goal in CookBot."],
     restTips: () => [
       "Get 7–9 hours of sleep; short sleep makes hunger harder to manage.",
       "Food still does most of the work today. Keep your calorie goal in CookBot.",
@@ -177,10 +178,13 @@ export const TRAINERS = {
     cardio: (ctx) => (ctx.shotSoon
       ? [15, "Easy 15–20 min walk. Skip it if you feel sick.", MET.easyWalk]
       : [20, "20 min brisk walk or bike at a pace you can still talk at.", MET.briskWalk]),
-    notes: (ctx) => [
-      ...(ctx.shotSoon ? ["Shot day or the day after: nausea and low energy are most common now, so this is a lighter session. If you feel unwell, just walk."] : []),
+    notes: () => [
       "Lifting is the priority. In the big trials, about a quarter to over a third of the weight lost on these drugs was lean mass; strength training helps keep it.",
-      "Eat a small meal with protein 1–2 hours before and drink water before and during: an empty stomach and dehydration (common with nausea) make workouts harder. Hit your protein goal too; CookBot tracks it.",
+    ],
+    health: (ctx) => [
+      ...(ctx.shotSoon ? ["Shot day or the day after: nausea and low energy are most common now, so this is a lighter session. If you feel unwell, just walk."] : []),
+      "Eat a small meal with protein 1–2 hours before. Don't train on an empty stomach, and hit your protein goal (CookBot tracks it).",
+      "Drink water before and during. Nausea, vomiting and diarrhea can dehydrate you.",
       "If you feel dizzy, shaky or faint, stop and eat something. The risk of low blood sugar is higher if you also take insulin or a sulfonylurea.",
       "Not medical advice. Check with your prescriber before starting a new program, especially after a dose increase.",
     ],

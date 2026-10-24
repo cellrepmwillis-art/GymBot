@@ -4,7 +4,7 @@ import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weekly
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-25 · 6:00 AM";
+const VERSION = "2026-10-25 · 7:00 AM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -528,6 +528,10 @@ function renderWorkout() {
   $("plan-minutes").textContent = `~${w.minutes} min`;
 
   const notes = w.notes;
+  const health = w.health ?? [];
+  $("health").hidden = !health.length;
+  $("health-summary").textContent = `Food & health (${health.length})`;
+  $("health-notes").replaceChildren(...health.map((text) => Object.assign(document.createElement("li"), { textContent: text })));
   $("tips").hidden = !notes.length && !w.sources.length;
   $("tips-summary").textContent = `Tips for this session (${notes.length})`;
   $("plan-notes").replaceChildren(...notes.map((text) => Object.assign(document.createElement("li"), { textContent: text })));
@@ -977,7 +981,7 @@ function workoutContext() {
   }
   parts.push(`Aim: ${AIMS[w.aim].label}.`);
   if (w.trainer !== "none") parts.push(`Training style: ${TRAINERS[w.trainer].label}.`);
-  if (w.trainer === "glp1" && w.notes?.some((n) => n.startsWith("Shot day"))) parts.push("It's my shot day or the day after.");
+  if (w.trainer === "glp1" && w.health?.some((n) => n.startsWith("Shot day"))) parts.push("It's my shot day or the day after.");
   parts.push(`Gym: ${GYMS[state.gym]?.label ?? GYMS.pf.label}.`);
   return parts.join(" ");
 }

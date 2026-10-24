@@ -378,8 +378,9 @@ function cardioOnly({ base, coachKey, plan, window, gym, shotSoon, runDay, ctx, 
 // At most this many tips a session.
 export const MAX_TIPS = 5;
 
-// The session's tips: the time-of-day note, the trainer's (or the aim's)
-// tips, then the Planet Fitness hours note. Over MAX_TIPS, the general
+// The session's training tips (food, recovery and medical notes are kept
+// apart, as `health`, with their own MAX_TIPS): the time-of-day note, the
+// trainer's (or the aim's) tips, then the Planet Fitness hours note. Over MAX_TIPS, the general
 // notes go first (hours, then time of day); the trainer's tips, safety ones
 // included, stay.
 function limitTips(placeNote, coachNotes, hoursNote) {
@@ -500,15 +501,13 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
       focus: mode === "rest" ? "Take it easy today." : `Stretching only. Recover for ${DAY_NAMES[(day + 1) % 7]}.`,
       minutes: items.reduce((total, item) => total + item.minutes, 0),
       items,
-      notes: [
-        "Rest days are part of the plan: muscles repair and grow between workouts, not during them.",
-        ...(coach.restTips?.(plan) ?? [plan === "gain" ? "Eat at your calorie goal anyway; muscle is built on rest days." : "Get to bed on time; sleep is when you recover."]),
-      ],
+      notes: ["Rest days are part of the plan: muscles repair and grow between workouts, not during them."],
+      health: (coach.restTips?.(plan) ?? [plan === "gain" ? "Eat at your calorie goal anyway; muscle is built on rest days." : "Get to bed on time; sleep is when you recover."]).slice(0, MAX_TIPS),
     };
   }
 
 
-  if (mode === "cardio") return { ...cardioOnly({ base, coachKey, plan, window, gym, shotSoon, runDay, ctx, split, target }), extra };
+  if (mode === "cardio") return { ...cardioOnly({ base, coachKey, plan, window, gym, shotSoon, runDay, ctx, split, target }), health: (coach.health?.(ctx) ?? []).slice(0, MAX_TIPS), extra };
 
   const budget = Math.min(window.budget, coach.maxLifts ?? 6, shotSoon ? 4 : 6);
   const allowed = (option) => gym === "af" || !option.barbell;
@@ -586,6 +585,7 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
   const tip = gym === "outdoor" ? OUTDOOR_TIPS[plan] : scheme.tip;
   const hoursNote = window.key === "late" && gym === "pf" ? "Many Planet Fitness clubs aren't open 24 hours anymore, so check your club's hours." : null;
   const notes = limitTips(split ? placeNote : null, coach.notes?.(ctx) ?? [tip], hoursNote);
+  const health = (coach.health?.(ctx) ?? []).slice(0, MAX_TIPS);
 
   return {
     ...base,
@@ -604,5 +604,6 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
     superset,
     cardio: cardioText,
     notes,
+    health,
   };
 }

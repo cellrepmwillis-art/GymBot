@@ -153,11 +153,11 @@ test("GLP-1: lifting first, no supersets, lighter around the shot", () => {
   assert.equal(w.superset, false);
   assert.equal(w.exercises.length, 5);
   assert.ok(w.notes.some((n) => /lean mass/.test(n)));
-  assert.ok(w.notes.some((n) => /Not medical advice/.test(n)));
+  assert.ok(w.health.some((n) => /Not medical advice/.test(n)));
   for (const d of [3, 4]) { // Thursday and Friday
     const near = suggest({ date: at(d, 10), trainer: "glp1", shotDay: 4 });
     assert.equal(near.exercises.length, 4);
-    assert.ok(near.notes.some((n) => /Shot day/.test(n)));
+    assert.ok(near.health.some((n) => /Shot day/.test(n)));
   }
   assert.equal(suggest({ date: at(2, 10), trainer: "glp1", shotDay: 4 }).exercises.length, 5);
   assert.equal(suggest({ date: at(3, 10), trainer: "glp1", shotDay: "" }).exercises.length, 5);
@@ -200,7 +200,7 @@ test("the rest day is stretching only", () => {
       assert.equal(w.rest, true);
       assert.ok(w.items.every((i) => i.kind === "stretch" && i.met === 2.3));
       // Nothing that reads as exercise beyond stretching.
-      for (const text of [w.focus, ...w.notes, ...w.items.map((i) => `${i.name} ${i.text}`)]) {
+      for (const text of [w.focus, ...w.notes, ...w.health, ...w.items.map((i) => `${i.name} ${i.text}`)]) {
         assert.doesNotMatch(text, /\b(walk|walking|run|steps|cardio|lift|train)\b/i, `${trainer}: ${text}`);
       }
     }
@@ -371,9 +371,11 @@ test("never more than five tips, and safety tips stay", () => {
   for (const trainer of ["none", "bodybuilder", "powerlifter", "marathon", "weightLoss", "glp1"]) for (const gym of ["pf", "af", "outdoor"]) for (let d = 0; d < 7; d++) for (const hour of [4, 7, 10, 12, 17, 21, 23]) for (const mode of [null, "cardio", "strength"]) {
     const w = suggest({ date: at(d, hour), trainer, gym, mode, shotDay: d, aim: "gain" });
     assert.ok(w.notes.length <= 5, `${trainer} ${gym} ${d} ${hour}: ${w.notes.length}`);
-    if (trainer === "glp1" && !w.rest && !w.mode) {
-      assert.ok(w.notes.some((n) => n.startsWith("Not medical advice")));
-      assert.ok(w.notes.some((n) => n.startsWith("If you feel dizzy")));
+    assert.ok(w.health.length <= 5, `${trainer} ${gym} ${d} ${hour}: ${w.health.length} health`);
+    if (trainer === "glp1" && !w.rest) {
+      assert.ok(w.health.some((n) => n.startsWith("Not medical advice")));
+      assert.ok(w.health.some((n) => n.startsWith("If you feel dizzy")));
+      assert.ok(!w.notes.some((n) => /medical|dizzy|Drink water/.test(n)));
     }
   }
 });
