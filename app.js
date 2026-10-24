@@ -1,8 +1,8 @@
-import { dayKey, previousDay } from "./day.js";
+import { dayKey, previousDay, nextReset } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned } from "./workouts.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-24 · 8:00 AM";
+const VERSION = "2026-10-24 · 9:00 AM";
 const STORAGE_KEY = "gymbot";
 const KEEP_DAYS = 60;
 // Weight used for calories burned until one is entered.
@@ -629,6 +629,16 @@ render();
 // Keep the clock and time of day current while the options screen is open.
 setInterval(() => { if (!$("options-screen").hidden) renderOptions(); }, 30 * 1000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
+
+// Switch to the new day at midnight, even with the app open: the next day's
+// options, or its rest-day reminder, replace the old day's workout.
+function renderAtMidnight() {
+  setTimeout(() => {
+    render();
+    renderAtMidnight();
+  }, nextReset() - Date.now() + 1000);
+}
+renderAtMidnight();
 
 if ("serviceWorker" in navigator) {
   // updateViaCache: check sw.js itself for changes on every open, too.

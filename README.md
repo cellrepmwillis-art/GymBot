@@ -22,9 +22,9 @@ On the workout screen every part of the session (warm-up, run, each exercise, ca
   | 11am–2pm (lunch) | Express: 4 exercises as supersets |
   | 4pm–8pm (peak) | Full session; each exercise lists a swap for when it's taken |
   | 8pm–11pm | Full session, easy cardio |
-  | 11pm–3am | 5 exercises, easy cardio; a reminder that many Planet Fitness clubs aren't 24 hours |
+  | 11pm–3am (after midnight it's the new day's workout) | 5 exercises, easy cardio; a reminder that many Planet Fitness clubs aren't 24 hours |
 
-  A workout after midnight counts toward the day before, until 3am, the same as CookBot.
+  A new day starts at midnight: the options, the workout and today's padlocks switch over then, even if the app is open.
 
 - **Aims:** Gain, Maintain or Cut, the same three as CookBot.
 
@@ -84,7 +84,7 @@ python3 -m http.server 8000
 | `trainers.js` | The AI Trainer profiles: bodybuilder, powerlifter, marathon, weight loss and GLP-1 |
 | `ask.js` | Ask the trainer (Claude API call) |
 | `met.js` | Calories burned: effort levels and the formula |
-| `day.js` | The 3am day boundary |
+| `day.js` | The midnight day boundary |
 | `sw.js`, `manifest.webmanifest`, `icon*.png`, `icon.svg` | Offline caching, home-screen install and the app icon |
 | `vendor/anthropic-sdk-0.131.0.js` | The Anthropic TypeScript SDK (MIT License), bundled into one file, the same as CookBot's |
 

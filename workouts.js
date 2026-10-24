@@ -251,12 +251,12 @@ export const WINDOWS = [
 
 export function timeWindow(date = new Date()) {
   const hour = date.getHours();
-  // 0:00–2:59 belongs to the late-night window of the day before.
-  if (hour < RESET_HOUR) return WINDOWS[WINDOWS.length - 1];
+  // Midnight to 2:59am is still late night: the window that starts at 11pm.
+  if (hour < WINDOWS[0].from) return WINDOWS[WINDOWS.length - 1];
   return [...WINDOWS].reverse().find((w) => hour >= w.from);
 }
 
-// The gym day: before 3am still counts as the day before, like CookBot.
+// The gym day, which rolls over at midnight (RESET_HOUR).
 export function gymDay(date = new Date()) {
   const shifted = new Date(date.getTime());
   shifted.setHours(shifted.getHours() - RESET_HOUR);

@@ -1,6 +1,5 @@
-// The tracking "day" runs from 3:00am to 2:59am local time, so a late-night
-// workout still counts toward the day it belongs to.
-export const RESET_HOUR = 3;
+// The tracking "day" runs from midnight to midnight, local time.
+export const RESET_HOUR = 0;
 
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -11,7 +10,7 @@ export function dayKey(date = new Date()) {
   return `${shifted.getFullYear()}-${pad(shifted.getMonth() + 1)}-${pad(shifted.getDate())}`;
 }
 
-// The next moment the day rolls over (the next local 3:00am after `date`).
+// The next moment the day rolls over (the next local midnight after `date`).
 export function nextReset(date = new Date()) {
   const next = new Date(date.getTime());
   next.setHours(RESET_HOUR, 0, 0, 0);

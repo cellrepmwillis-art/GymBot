@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { suggest, timeWindow, gymDay, TARGETS, caloriesBurned, equipmentRank, equipmentKind } from "./workouts.js";
+import { dayKey, nextReset } from "./day.js";
 
 // 2026-10-19 is a Monday.
 const at = (day, hour, minute = 0) => new Date(2026, 9, 19 + day, hour, minute);
@@ -11,9 +12,16 @@ test("Monday to Saturday run push, pull, legs twice; Sunday is rest", () => {
   assert.equal(suggest({ date: at(6, 10) }).rest, true);
 });
 
-test("before 3am still counts as the day before", () => {
-  assert.equal(gymDay(at(1, 1, 30)), 1); // 1:30am Tuesday is Monday night
-  assert.equal(suggest({ date: at(1, 1, 30) }).title, "Push A");
+test("the day rolls over at midnight", () => {
+  assert.equal(gymDay(at(0, 23, 59)), 1); // 11:59pm Monday
+  assert.equal(gymDay(at(1, 0, 0)), 2); // midnight starts Tuesday
+  assert.equal(suggest({ date: at(0, 23, 59) }).title, "Push A");
+  assert.equal(suggest({ date: at(1, 0, 0) }).title, "Pull A");
+  assert.equal(dayKey(at(1, 0, 0)), "2026-10-20");
+  assert.equal(dayKey(at(0, 23, 59)), "2026-10-19");
+  assert.deepEqual(nextReset(at(0, 23, 59)), at(1, 0, 0));
+  // Midnight to 3am is still the late-night window.
+  assert.equal(timeWindow(at(1, 0, 0)).key, "late");
   assert.equal(timeWindow(at(1, 1, 30)).key, "late");
   assert.equal(timeWindow(at(1, 3)).key, "early");
 });
