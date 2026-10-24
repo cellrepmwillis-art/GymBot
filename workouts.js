@@ -10,6 +10,7 @@ import { MET } from "./met.js";
 import { OUTDOOR } from "./outdoor.js";
 
 export { TRAINERS };
+export { sessionLimits } from "./trainers.js";
 export { MET, caloriesBurned } from "./met.js";
 
 // Aims match CookBot's Settings: "gain", "maintain" or "cut". All three
@@ -426,11 +427,13 @@ const MAX_CHOICES = 3;
 // trainer's favorite kind of equipment and the rest follow its order;
 // without one, the plan's own pick comes first, then machine, free weight,
 // other. `mode` limits the day: "cardio" for cardio only, "strength" for
-// lifting only, "rest" for an unexpected rest day, or null for the full plan. `target` is a body part from TARGETS
+// lifting only, "rest" for an unexpected rest day, or null for the full plan.
+// `extra` makes it an extra session of the day (with mode "cardio" or
+// "strength"). `target` is a body part from TARGETS
 // instead of today's split. `trainer` is a key of TRAINERS, and `shotDay` the
 // weekday (Sunday is 0) of a weekly GLP-1 shot. `restDay` is the weekday off;
 // on it, without a target, this returns a rest day.
-export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, swaps = {}, mode = null, target = null, trainer = "none", shotDay = null, restDay = 0 } = {}) {
+export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, swaps = {}, mode = null, target = null, trainer = "none", shotDay = null, restDay = 0, extra = false } = {}) {
   const plan = AIMS[aim] ? aim : "maintain";
   const coachKey = TRAINERS[trainer] ? trainer : "none";
   const coach = TRAINERS[coachKey];
@@ -450,6 +453,12 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
   if (mode === "strength" && runDay) {
     split ??= splitFor(day, off);
     runDay = null;
+  }
+  // An extra session is just its cardio or its lifting: no run day, and
+  // always something to do.
+  if (extra) {
+    runDay = null;
+    split ??= splitFor(day, off) ?? { key: "legs", ...TARGETS.legs };
   }
   // An unexpected rest day is a rest day like the scheduled one.
   if (mode === "rest") {
@@ -485,7 +494,7 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
   }
 
 
-  if (mode === "cardio") return cardioOnly({ base, coachKey, plan, window, gym, shotSoon, runDay, ctx, split, target });
+  if (mode === "cardio") return { ...cardioOnly({ base, coachKey, plan, window, gym, shotSoon, runDay, ctx, split, target }), extra };
 
   const budget = Math.min(window.budget, coach.maxLifts ?? 6, shotSoon ? 4 : 6);
   const allowed = (option) => gym === "af" || !option.barbell;
@@ -570,6 +579,7 @@ export function suggest({ date = new Date(), aim = "maintain", gym = "pf", shuff
     split: split?.key ?? null,
     target: TARGETS[target] ? target : null,
     mode: mode === "strength" ? "strength" : null,
+    extra,
     title: runDay?.title ?? split.title,
     focus: runDay ? (split ? `Run, then ${split.focus.toLowerCase()}` : "Running only today") : split.focus,
     minutes: Math.round(minutes / 5) * 5,

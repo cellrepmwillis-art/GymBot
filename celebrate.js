@@ -156,7 +156,8 @@ export function weekDays(today, restDay) {
 export function weekStats(locked, today, restDay) {
   const stats = { gymDays: 0, strengthDays: 0, cardioMinutes: 0 };
   for (const key of weekDays(today, restDay)) {
-    const day = locked[key];
+    // A day with extra sessions keeps their sum in `total`.
+    const day = locked[key]?.total ?? locked[key];
     if (!day) continue;
     if (day.gym) stats.gymDays++;
     if (day.strength) stats.strengthDays++;

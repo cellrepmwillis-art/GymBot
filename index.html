@@ -156,6 +156,10 @@
     </section>
 
     <section class="card">
+      <div id="sessions" class="sessions">
+        <div id="session-tabs" class="session-tabs" role="group" aria-label="Today's sessions"></div>
+        <button id="add-session" class="link-btn add-session" type="button">＋ Add a session</button>
+      </div>
       <ol id="items" class="items"></ol>
       <div id="rest-up" class="rest-up" hidden>
         <p class="rest-up-title">Rest up.</p>
@@ -167,6 +171,7 @@
         <button id="strength-only" type="button" aria-pressed="false">Strength training only override</button>
         <button id="rest-override" type="button" aria-pressed="false">Unexpected rest day override</button>
       </div>
+      <button id="remove-session" class="link-btn small remove-session" type="button" hidden>Remove this session</button>
     </section>
 
     <section class="card" id="ask-card">
@@ -211,6 +216,24 @@
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <dialog id="session-dialog" aria-labelledby="session-dialog-title">
+    <h2 id="session-dialog-title">Add a session</h2>
+    <p id="session-dialog-text" class="muted"></p>
+    <div class="session-choices">
+      <button id="session-cardio" type="button">Cardio session</button>
+      <div class="session-strength">
+        <label class="field">
+          <span>Strength session for</span>
+          <select id="session-focus"></select>
+        </label>
+        <button id="session-strength" type="button">Strength session</button>
+      </div>
+    </div>
+    <div class="row">
+      <button type="button" id="session-cancel">Never mind</button>
+    </div>
+  </dialog>
 
   <dialog id="rest-dialog" aria-labelledby="rest-dialog-title">
     <form method="dialog">

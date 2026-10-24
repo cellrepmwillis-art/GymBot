@@ -13,6 +13,8 @@
 //                  the most preferred choice the gym has, and swaps follow
 //                  the same order
 //   notes(ctx)     tips shown with the workout
+//   sessions       sessions a day, the day's plan included: { strength,
+//                  cardio, total } (see sessionLimits)
 //   restTips(plan) advice for the rest day (the rest day itself is always
 //                  just stretching; see suggest in workouts.js)
 // ctx is { plan, split, window, gym, shotSoon }.
@@ -188,3 +190,23 @@ export const TRAINERS = {
     ],
   },
 };
+
+// How many sessions a day each trainer recommends, the day's plan counted
+// as a strength session (or cardio, under the cardio-only override).
+// Powerlifters lift once, with some light cardio; bodybuilders often train
+// twice a day; weight loss leans on extra walks. Marathon training and the
+// Outdoors & home gym allow up to four, short runs and walks included.
+const SESSIONS = {
+  none: { strength: 1, cardio: 1, total: 2 },
+  powerlifter: { strength: 1, cardio: 1, total: 2 },
+  bodybuilder: { strength: 2, cardio: 1, total: 3 },
+  weightLoss: { strength: 1, cardio: 2, total: 3 },
+  glp1: { strength: 1, cardio: 1, total: 2 },
+  marathon: { strength: 2, cardio: 3, total: 4 },
+};
+const MOST = { strength: 2, cardio: 3, total: 4 };
+
+export function sessionLimits(trainer, gym) {
+  const limits = SESSIONS[trainer] ?? SESSIONS.none;
+  return gym === "outdoor" ? { ...MOST } : { ...limits };
+}

@@ -349,3 +349,20 @@ test("outdoors & home uses no gym equipment", () => {
   assert.match(monday.cardio, /brisk walk/);
   assert.match(suggest({ date: at(0, 10), gym: "outdoor", mode: "cardio" }).cardio, /^45 min brisk walk at the park/);
 });
+
+test("session limits", async () => {
+  const { sessionLimits } = await import("./workouts.js");
+  assert.deepEqual(sessionLimits("powerlifter", "af"), { strength: 1, cardio: 1, total: 2 });
+  assert.deepEqual(sessionLimits("bodybuilder", "pf"), { strength: 2, cardio: 1, total: 3 });
+  assert.deepEqual(sessionLimits("marathon", "pf").total, 4);
+  assert.deepEqual(sessionLimits("powerlifter", "outdoor").total, 4);
+  assert.deepEqual(sessionLimits("bogus", "pf"), { strength: 1, cardio: 1, total: 2 });
+});
+
+test("extra sessions are just cardio or just lifting, even on a run day", () => {
+  const cardio = suggest({ date: at(1, 18), trainer: "marathon", mode: "cardio", extra: true });
+  assert.deepEqual(cardio.items.map((i) => i.id), ["warmup", "cardio"]);
+  const back = suggest({ date: at(5, 18), trainer: "marathon", mode: "strength", target: "back", extra: true });
+  assert.equal(back.title, "Back day");
+  assert.ok(back.items.every((i) => i.kind === "warmup" || i.kind === "lift"));
+});

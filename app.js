@@ -1,10 +1,10 @@
 import { dayKey, previousDay, nextReset } from "./day.js";
-import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned } from "./workouts.js";
+import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned, sessionLimits } from "./workouts.js";
 import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weeklyBadges, trainingWeek, weekDays, CARDIO_GOAL, STRENGTH_DAYS } from "./celebrate.js";
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-25 · 3:00 AM";
+const VERSION = "2026-10-25 · 4:00 AM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -24,6 +24,9 @@ function load() {
   // (until Lock out) and `burned` the calories from the locked items.
   // `swaps` counts taps on each exercise's "Taken?" swap, by position, and
   // `mode` is "cardio" or "strength" when an override limits the day.
+  // `extra` holds the day's extra sessions, each { kind: "cardio" or
+  // "strength", focus, at, swaps, done, ... } with the same per-session
+  // fields as the day's plan, and `total` the sums across all of them.
   // (`shuffle` is from the old "Different exercises" button.)
   // focus: { day, target }, the body part picked on the options screen. It
   // only applies to that day; the next day starts back on the split.
@@ -105,22 +108,43 @@ function weight() {
 const todaysTarget = () => (state.focus?.day === dayKey() && TARGETS[state.focus.target] ? state.focus.target : null);
 
 // The workout for `date` with the current settings.
-const workout = (date, target, shuffle = 0, swaps = {}, mode = null) =>
-  suggest({ date, aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay, restDay: state.restDay, target, shuffle, swaps, mode });
+const workout = (date, target, shuffle = 0, swaps = {}, mode = null, extra = false) =>
+  suggest({ date, aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay, restDay: state.restDay, target, shuffle, swaps, mode, extra });
 
 // An earlier day of this week opened from the week strip for editing, or
 // null for today. The workout screen works on currentDay().
 let viewDay = null;
 const currentDay = () => viewDay ?? dayKey();
+// The session on screen: 0 for the day's plan, 1 and up for extra sessions.
+let viewSession = 0;
 
 // The locked-in workout for the day on screen, or null.
+// `lock` is the session on screen (the day itself for the plan) and `day`
+// the day.
 function lockedWorkout() {
-  const lock = state.locked[currentDay()];
-  if (!lock) return null;
+  const day = state.locked[currentDay()];
+  if (!day) return null;
   // The day comes from the key, the time of day from `at`; a time that isn't
-  // on that day falls back to 10am.
-  const at = lock.at && dayKey(new Date(lock.at)) === currentDay() ? new Date(lock.at) : dateOfKey(currentDay());
-  return { lock, w: workout(at, lock.focus, lock.shuffle, lock.swaps, lock.mode) };
+  // on that day falls back to 10am (6pm for extra sessions).
+  const timeOf = (lock, hour) => (lock.at && dayKey(new Date(lock.at)) === currentDay() ? new Date(lock.at) : dateOfKey(currentDay(), hour));
+  const session = viewSession > 0 ? day.extra?.[viewSession - 1] : null;
+  if (!session) {
+    viewSession = 0;
+    return { lock: day, day, w: workout(timeOf(day, 10), day.focus, day.shuffle, day.swaps, day.mode) };
+  }
+  return { lock: session, day, w: workout(timeOf(session, 18), session.focus, 0, session.swaps, session.kind === "cardio" ? "cardio" : "strength", true) };
+}
+
+// A day's totals across its plan and extra sessions, for the week strip and
+// weekly goals.
+function updateTotals(day) {
+  const sessions = [day, ...(day.extra ?? [])];
+  day.total = {
+    burned: sessions.reduce((sum, s) => sum + (s.burned ?? 0), 0),
+    cardioMin: sessions.reduce((sum, s) => sum + (s.cardioMin ?? 0), 0),
+    gym: sessions.some((s) => s.gym),
+    strength: sessions.some((s) => s.strength),
+  };
 }
 
 // Short trainer names for the chip on the options screen.
@@ -132,12 +156,14 @@ const TRAINER_CHIPS = { bodybuilder: "Bodybuilder", powerlifter: "Powerlifter", 
 const isSplitDay = (w) => /^(Push|Pull|Legs) [AB]$/.test(w.title);
 
 function displayName(w) {
+  if (w.extra) return w.mode === "cardio" ? "Cardio session" : `${TARGET_LABELS[w.target] ?? "Strength"} session`;
   if (w.mode === "cardio") return "Cardio only";
   if (w.target) return `${TARGET_LABELS[w.target]} (selected)`;
   return isSplitDay(w) ? w.focus.replace(/ \(.*\)$/, "") : w.title;
 }
 
 function displayDetail(w) {
+  if (w.extra) return "Extra session";
   if (w.mode === "cardio") return "Override";
   const emphasis = isSplitDay(w) ? w.focus.match(/\((.*)\)$/)?.[1] : w.focus;
   const detail = emphasis ? emphasis[0].toUpperCase() + emphasis.slice(1) : "";
@@ -191,7 +217,7 @@ function renderWeekStrip(container) {
     const mark = document.createElement("span");
     mark.className = "mark";
     if (lock?.unexpectedRest && lock.mode === "rest") mark.textContent = "💤";
-    else if (lock?.burned) mark.textContent = lock.burned;
+    else if (lock?.total?.burned ?? lock?.burned) mark.textContent = lock.total?.burned ?? lock.burned;
     else mark.textContent = lock?.done?.length ? "✓" : weekday === restDay ? "–" : "";
     li.append(mark);
     li.classList.toggle("today", key === today);
@@ -209,7 +235,7 @@ function renderWeekStrip(container) {
       li.addEventListener("click", () => toast(UPCOMING_LINES[weekday % UPCOMING_LINES.length]));
     }
     if (lock?.done?.length) workouts++;
-    burned += lock?.burned ?? 0;
+    burned += lock?.total?.burned ?? lock?.burned ?? 0;
     return li;
   }));
   return { workouts, burned };
@@ -239,6 +265,7 @@ function toast(text) {
 function openDay(key) {
   state.locked[key] ??= { at: dateOfKey(key).getTime(), focus: null, shuffle: 0, swaps: {}, done: [], burned: 0, active: false };
   viewDay = key;
+  viewSession = 0;
   save();
   render();
   window.scrollTo({ top: 0 });
@@ -442,6 +469,9 @@ $("lock-in").addEventListener("click", () => {
     focus,
     shuffle: same ? previous.shuffle ?? 0 : 0,
     mode: resting ? "rest" : same ? previous.mode ?? null : null,
+    extra: previous?.extra ?? [],
+    total: previous?.total,
+    celebrated: same ? previous.celebrated ?? false : false,
     unexpectedRest: previous?.unexpectedRest ?? false,
     streakBreak: previous?.streakBreak ?? false,
     swaps: same ? previous.swaps ?? {} : {},
@@ -491,7 +521,7 @@ $("rest-anyway").addEventListener("click", () => {
 function renderWorkout() {
   const today = lockedWorkout();
   if (!today) return;
-  const { lock, w } = today;
+  const { lock, day, w } = today;
 
   $("plan-title").textContent = w.rest ? w.title : displayName(w);
   $("plan-focus").textContent = w.rest ? w.focus : [`${w.day} ${w.window.label.toLowerCase()}`, displayDetail(w)].filter(Boolean).join(" · ");
@@ -519,7 +549,9 @@ function renderWorkout() {
   lock.gym = !w.rest && locked.some((item) => item.kind !== "warmup");
   lock.strength = locked.some((item) => item.kind === "lift");
   lock.cardioMin = w.rest ? 0 : Math.round(locked.filter((item) => ["warmup", "cardio", "run"].includes(item.kind)).reduce((sum, item) => sum + item.minutes * (item.met >= 6 ? 2 : 1), 0));
+  updateTotals(day);
   save();
+  renderSessions(day, w);
 
   $("locked-count").textContent = `${done.size} of ${w.items.length} locked`;
   $("burned").textContent = `🔥 ${lock.burned.toLocaleString()} cal burned`;
@@ -615,8 +647,13 @@ function renderWorkout() {
         : weeklyBadges({ locked: state.locked, today, restDay: Number(state.restDay), awarded: state.achievements.weekly[week], outdoor: state.gym === "outdoor" });
       state.achievements.weekly[week] = weekly.awarded;
       save();
-      if (lock.complete && !lock.celebrated) celebrateToday(lock, weekly.badges);
-      else if (weekly.badges.length) showCelebration({ title: "Weekly goal hit!", line: "Keep locking in.", badges: weekly.badges }, 0);
+      if (lock.complete && !lock.celebrated && lock === day) celebrateToday(lock, weekly.badges);
+      else if (lock.complete && !lock.celebrated) {
+        // An extra session gets its own, smaller celebration.
+        lock.celebrated = true;
+        save();
+        showCelebration({ title: "Session locked in!", line: "Extra work, extra credit.", badges: weekly.badges }, lock.burned);
+      } else if (weekly.badges.length) showCelebration({ title: "Weekly goal hit!", line: "Keep locking in.", badges: weekly.badges }, 0);
     });
     list.append(li);
   }
@@ -624,7 +661,9 @@ function renderWorkout() {
   // body part. An unexpected rest day only offers working out anyway, which
   // stays open all day.
   const restOverride = lock.mode === "rest";
-  $("overrides").hidden = w.rest && !restOverride;
+  // Extra sessions are already cardio or strength; they can only be removed.
+  $("remove-session").hidden = lock === day;
+  $("overrides").hidden = lock !== day || (w.rest && !restOverride);
   $("cardio-only").hidden = restOverride;
   $("strength-only").hidden = restOverride;
   for (const [id, mode, label] of [["cardio-only", "cardio", "Cardio only override"], ["strength-only", "strength", "Strength training only override"]]) {
@@ -635,6 +674,93 @@ function renderWorkout() {
   $("rest-override").setAttribute("aria-pressed", "false");
   $("rest-override").textContent = restOverride ? "Feeling better? Work out anyway" : lock.unexpectedRest ? "Back to my rest day" : "Unexpected rest day override";
 }
+
+// ---- Sessions ----
+
+const HERCULES = "Don't break the lock: even Hercules needed a rest. That's the most sessions recommended for one day.";
+
+// Sessions used today by kind: the plan counts as strength, or as cardio
+// under the cardio-only override.
+function sessionCounts(day) {
+  const counts = { strength: 0, cardio: 0, total: 0 };
+  for (const kind of [day.mode === "cardio" ? "cardio" : "strength", ...(day.extra ?? []).map((s) => s.kind)]) {
+    counts[kind]++;
+    counts.total++;
+  }
+  return counts;
+}
+
+function renderSessions(day, w) {
+  const extras = day.extra ?? [];
+  // Rest days don't add sessions; one already added still shows.
+  const resting = day.rest || day.mode === "rest";
+  $("sessions").hidden = resting && extras.length === 0;
+  const tabs = [["1 · Plan", 0], ...extras.map((s, i) => [`${i + 2} · ${s.kind === "cardio" ? "Cardio" : TARGET_LABELS[s.focus] ?? "Strength"}`, i + 1])];
+  $("session-tabs").replaceChildren(...tabs.map(([label, index]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.setAttribute("aria-pressed", String(index === viewSession));
+    button.addEventListener("click", () => {
+      viewSession = index;
+      renderWorkout();
+      window.scrollTo({ top: 0 });
+    });
+    return button;
+  }));
+  $("add-session").hidden = resting;
+}
+
+$("add-session").addEventListener("click", () => {
+  const day = state.locked[currentDay()];
+  if (!day) return;
+  const limits = sessionLimits(state.trainer, state.gym);
+  const used = sessionCounts(day);
+  const cardioLeft = limits.cardio - used.cardio;
+  const strengthLeft = limits.strength - used.strength;
+  if (used.total >= limits.total || (cardioLeft <= 0 && strengthLeft <= 0)) {
+    toast(HERCULES);
+    return;
+  }
+  $("session-dialog-text").textContent = `Session ${used.total + 1} of up to ${limits.total} today.`;
+  $("session-cardio").disabled = cardioLeft <= 0;
+  $("session-cardio").textContent = cardioLeft > 0 ? "Cardio session" : "Cardio session (done for today)";
+  $("session-strength").disabled = strengthLeft <= 0;
+  $("session-strength").textContent = strengthLeft > 0 ? "Strength session" : "Strength session (done for today)";
+  $("session-focus").disabled = strengthLeft <= 0;
+  $("session-dialog").showModal();
+});
+
+function addSession(kind) {
+  $("session-dialog").close();
+  const day = state.locked[currentDay()];
+  if (!day) return;
+  day.extra = [...(day.extra ?? []), {
+    kind,
+    focus: kind === "strength" ? $("session-focus").value : null,
+    at: viewDay ? dateOfKey(viewDay, 18).getTime() : Date.now(),
+    swaps: {},
+    done: [],
+  }];
+  viewSession = day.extra.length;
+  save();
+  renderWorkout();
+  window.scrollTo({ top: 0 });
+}
+for (const [value, label] of Object.entries(TARGET_LABELS)) $("session-focus").add(new Option(label, value));
+$("session-cardio").addEventListener("click", () => addSession("cardio"));
+$("session-cancel").addEventListener("click", () => $("session-dialog").close());
+$("session-strength").addEventListener("click", () => addSession("strength"));
+
+$("remove-session").addEventListener("click", () => {
+  const day = state.locked[currentDay()];
+  if (!day || viewSession === 0 || !confirm("Remove this session? Its locks and calories go with it.")) return;
+  day.extra.splice(viewSession - 1, 1);
+  viewSession = 0;
+  updateTotals(day);
+  save();
+  renderWorkout();
+});
 
 // The overrides limit the day to cardio or to lifting; tapping the one
 // that's on goes back to the full plan. What's already locked stays locked.
@@ -721,6 +847,7 @@ $("rest-override").addEventListener("click", () => {
 });
 
 function lockOut() {
+  viewSession = 0;
   // While editing an earlier day, the button is "Done editing".
   if (viewDay) {
     viewDay = null;

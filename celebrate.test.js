@@ -166,3 +166,8 @@ test("outdoors, the weekly badges say worked out, not hit the gym", () => {
   const locked = { [OCT(19)]: { gym: true }, [OCT(20)]: { gym: true }, [OCT(21)]: { gym: true }, [OCT(22)]: { gym: true } };
   assert.deepEqual(weeklyBadges({ locked, today: OCT(22), restDay: 0, outdoor: true }).badges.map((b) => b.text), ["You worked out four days this week. Certified Park Rat."]);
 });
+
+test("weekly stats use a day's total across sessions", () => {
+  const locked = { [OCT(19)]: { gym: true, strength: true, cardioMin: 20, total: { gym: true, strength: true, cardioMin: 65 } } };
+  assert.equal(weekStats(locked, OCT(19), 0).cardioMinutes, 65);
+});

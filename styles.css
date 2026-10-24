@@ -350,3 +350,19 @@ main[hidden], .dock[hidden] { display: none; }
 .toast[hidden] { display: none; }
 .toast.fade { opacity: 0; }
 .week li.upcoming { cursor: pointer; }
+
+/* Sessions */
+.sessions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+.sessions[hidden] { display: none; }
+.session-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.session-tabs button { padding: 6px 12px; border-radius: 999px; font-size: 0.9rem; background: var(--bg); }
+.session-tabs button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+.add-session { font-weight: 600; font-size: 0.9rem; }
+.add-session[hidden], .remove-session[hidden] { display: none; }
+.remove-session { display: block; margin: 14px auto 0; color: var(--muted); text-decoration: underline; }
+.session-choices { display: grid; gap: 12px; margin: 12px 0; }
+.session-choices button { padding: 12px; }
+.session-choices button:disabled { opacity: 0.5; }
+.session-strength { display: grid; gap: 8px; padding: 10px; border-radius: 12px; background: var(--bg); }
+.session-strength .field { margin: 0; }
+#session-dialog .row { margin-top: 0; }
