@@ -1,11 +1,12 @@
 import { dayKey, previousDay, nextReset } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned, sessionLimits, ROUTINE_CARDIO, ROUTINE_STRENGTH } from "./workouts.js";
 import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weeklyBadges, trainingWeek, weekDays, CARDIO_GOAL, STRENGTH_DAYS } from "./celebrate.js";
+import { restDayOn, isRestDate, planPosition } from "./week.js";
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-25 · 4:00 PM";
+const VERSION = "2026-10-28 · 12:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -33,8 +34,11 @@ function load() {
   // only applies to that day; the next day starts back on the split.
   // trainer: a key of TRAINERS (the "AI Trainer" setting); shotDay: the
   // weekday of a weekly GLP-1 shot, or "".
-  // restDay: the weekday off (Sunday is 0). restAck: the day "Lock in anyway"
-  // was tapped on the rest day, so the reminder shows once.
+  // restDay: the weekday off (Sunday is 0). restHistory: [{ from, day }],
+  // every rest day there's been and the day it started (see week.js), so
+  // changing it midweek doesn't rewrite the days already done. restAck: the
+  // day "Lock in anyway" was tapped on the rest day, so the reminder shows
+  // once.
   // weightLb: for calories burned and the protein target, or null.
   // heightIn: for the protein target, or null.
   // routine: "User selected", { cardio, minutes, strength }, and useRoutine
@@ -53,7 +57,7 @@ function load() {
   // behind the milestones (see celebrate.js). A lock's `complete` says every
   // item that day is locked, `celebrated` that the celebration was shown.
   const defaults = {
-    aim: "maintain", gym: "pf", trainer: "none", shotDay: "", restDay: 0, restAck: null, weightLb: null,
+    aim: "maintain", gym: "pf", trainer: "none", shotDay: "", restDay: 0, restHistory: null, restAck: null, weightLb: null,
     locked: {}, focus: null, apiKey: "", chat: null, achievements: { completeDays: 0, fullWeeks: 0, weeks: [] },
     weighIns: [], weightStart: null, weightSetDay: null, heightIn: null, routine: null, useRoutine: false,
   };
@@ -113,7 +117,10 @@ const todaysTarget = () => (state.focus?.day === dayKey() && TARGETS[state.focus
 
 // The workout for `date` with the current settings.
 const workout = (date, target, shuffle = 0, swaps = {}, mode = null, extra = false, routine = null) =>
-  suggest({ date, aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay, restDay: state.restDay, target, shuffle, swaps, mode, extra, routine });
+  suggest({ date, aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay, restDay: restDayOn(rests(), dayKey(date)), position: planPosition(dayKey(date), rests()), target, shuffle, swaps, mode, extra, routine });
+
+// The rest day and its history, for week.js.
+const rests = () => (state.restHistory?.length ? state.restHistory : Number(state.restDay));
 
 // My routine, while it's the plan.
 const activeRoutine = () => (state.useRoutine && state.routine ? state.routine : null);
@@ -214,7 +221,7 @@ function showScreen(name) {
 // the week's workout count and calories.
 function renderWeekStrip(container) {
   const today = dayKey();
-  const restDay = Number(state.restDay);
+  const restDay = rests();
   let workouts = 0;
   let burned = 0;
   container.replaceChildren(...weekDays(today, restDay).map((key) => {
@@ -227,7 +234,7 @@ function renderWeekStrip(container) {
     mark.className = "mark";
     if (lock?.unexpectedRest && lock.mode === "rest") mark.textContent = "💤";
     else if (lock?.total?.burned ?? lock?.burned) mark.textContent = lock.total?.burned ?? lock.burned;
-    else mark.textContent = lock?.done?.length ? "✓" : weekday === restDay ? "–" : "";
+    else mark.textContent = lock?.done?.length ? "✓" : isRestDate(restDay, key) ? "–" : "";
     li.append(mark);
     li.classList.toggle("today", key === today);
     li.classList.toggle("done", Boolean(lock?.done?.length));
@@ -352,10 +359,10 @@ function renderOptions() {
     ? `${workouts} ${workouts === 1 ? "workout" : "workouts"} · ${burned.toLocaleString()} cal burned this week`
     : "Nothing locked yet this week.";
   // Progress toward the weekly guideline goals.
-  const { stats } = weeklyBadges({ locked: state.locked, today: todayKey, restDay: Number(state.restDay) });
+  const { stats } = weeklyBadges({ locked: state.locked, today: todayKey, restDay: rests() });
   const tick = (ok) => (ok ? " ✓" : "");
   $("week-goals").textContent = `${stats.gymDays} ${state.gym === "outdoor" ? "workout" : "gym"} ${stats.gymDays === 1 ? "day" : "days"} · ${Math.min(stats.cardioMinutes, 999)} of ${CARDIO_GOAL} cardio min${tick(stats.cardioMinutes >= CARDIO_GOAL)} · strength ${Math.min(stats.strengthDays, STRENGTH_DAYS)} of ${STRENGTH_DAYS} days${tick(stats.strengthDays >= STRENGTH_DAYS)}`;
-  const run = streak(state.locked, todayKey, Number(state.restDay));
+  const run = streak(state.locked, todayKey, rests());
   const rank = level(state.achievements.fullWeeks);
   $("streak-line").textContent = [run >= 2 ? `🔥 ${run}-day streak` : null, rank ? `🏆 ${rank}` : null].filter(Boolean).join(" · ");
 
@@ -364,7 +371,7 @@ function renderOptions() {
   const lock = state.locked[todayKey];
   $("lock-in-label").textContent = lock?.unexpectedRest && lock.mode === "rest" ? "Back to my rest day" : lock?.done?.length ? "Lock back in" : "Lock in";
   // Unexpected rest days are for training days.
-  $("rest-link").hidden = Boolean(lock?.unexpectedRest) || gymDay(now) === Number(state.restDay);
+  $("rest-link").hidden = Boolean(lock?.unexpectedRest) || isRestDate(rests(), dayKey(now));
 }
 
 // ---- My routine ----
@@ -728,11 +735,11 @@ function renderWorkout() {
       renderWorkout();
       // Weekly goals reached by this lock, then the day itself if it's done.
       const today = currentDay();
-      const week = trainingWeek(today, Number(state.restDay)).id;
+      const week = trainingWeek(today, rests()).id;
       state.achievements.weekly ??= {};
       // Rest-day stretching doesn't move the weekly goals, so it doesn't check.
       const weekly = w.rest ? { badges: [], awarded: state.achievements.weekly[week] ?? [] }
-        : weeklyBadges({ locked: state.locked, today, restDay: Number(state.restDay), awarded: state.achievements.weekly[week], outdoor: state.gym === "outdoor" });
+        : weeklyBadges({ locked: state.locked, today, restDay: rests(), awarded: state.achievements.weekly[week], outdoor: state.gym === "outdoor" });
       state.achievements.weekly[week] = weekly.awarded;
       save();
       if (lock.complete && !lock.celebrated && lock === day) celebrateToday(lock, weekly.badges);
@@ -894,7 +901,7 @@ $("strength-only").addEventListener("click", () => setMode("strength"));
 // in a week (the fourth rest day, counting the scheduled one) costs the
 // streak.
 function askUnexpectedRest() {
-  const prompt = unexpectedRestPrompt(unexpectedRests(state.locked, currentDay(), Number(state.restDay)));
+  const prompt = unexpectedRestPrompt(unexpectedRests(state.locked, currentDay(), rests()));
   $("rest-dialog-title").textContent = prompt.title;
   $("rest-dialog-text").textContent = prompt.text;
   $("rest-dialog-yes").textContent = prompt.yes;
@@ -973,7 +980,7 @@ $("lock-out").addEventListener("click", lockOut);
 function celebrateToday(lock, weekly = []) {
   lock.celebrated = true;
   const { celebration, achievements } = celebrate({
-    locked: state.locked, today: currentDay(), restDay: Number(state.restDay), achievements: state.achievements, rest: lock.rest,
+    locked: state.locked, today: currentDay(), restDay: rests(), achievements: state.achievements, rest: lock.rest,
   });
   state.achievements = achievements;
   save();
@@ -1209,9 +1216,20 @@ $("restore-file").addEventListener("change", async () => {
   render();
 });
 
+// A new rest day applies from today on: earlier days keep the week they
+// were done in, and the rest of this week carries on from them.
+function setRestDay(day) {
+  if (day === Number(state.restDay)) return;
+  const today = dayKey();
+  const history = (state.restHistory ?? [{ from: "", day: Number(state.restDay) }]).filter((entry) => entry.from < today);
+  if (history.at(-1)?.day !== day) history.push({ from: today, day });
+  state.restHistory = history;
+  state.restDay = day;
+}
+
 $("settings").addEventListener("close", () => {
   if ($("settings").returnValue !== "save") return;
-  state.restDay = Number($("rest-input").value);
+  setRestDay(Number($("rest-input").value));
   const feet = Number($("feet-input").value);
   const inches = Number($("inches-input").value);
   state.heightIn = feet || inches ? feet * 12 + inches : null;
@@ -1233,14 +1251,14 @@ function screenNow() {
   const today = dayKey();
   const lock = state.locked[today];
   if (lock?.active) return "workout";
-  if (gymDay() === Number(state.restDay) && !lock && state.restAck !== today) return "rest";
+  if (isRestDate(rests(), today) && !lock && state.restAck !== today) return "rest";
   return "options";
 }
 
 function render() {
   // A day being edited stops being editable once it's no longer an earlier
   // day of this week (after midnight on the rest day, say).
-  if (viewDay && (viewDay >= dayKey() || !weekDays(dayKey(), Number(state.restDay)).includes(viewDay))) viewDay = null;
+  if (viewDay && (viewDay >= dayKey() || !weekDays(dayKey(), rests()).includes(viewDay))) viewDay = null;
   const screen = screenNow();
   showScreen(screen);
   if (screen === "workout") {

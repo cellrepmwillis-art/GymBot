@@ -314,7 +314,12 @@ export function gymDay(date = new Date()) {
 export const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 export function splitFor(day, restDay = 0) {
-  const key = WEEK[weekPosition(day, restDay)];
+  return splitAt(weekPosition(day, restDay));
+}
+
+// The split for a place in the week (0 is the rest day).
+function splitAt(position) {
+  const key = WEEK[position];
   return key ? { key, ...SPLITS[key] } : null;
 }
 
@@ -494,7 +499,9 @@ const MAX_CHOICES = 3;
 // `extra` makes it an extra session of the day (with mode "cardio" or
 // "strength"). `target` is a body part from TARGETS
 // instead of today's split. `trainer` is a key of TRAINERS, and `shotDay` the
-// weekday (Sunday is 0) of a weekly GLP-1 shot. `restDay` is the weekday off;
+// weekday (Sunday is 0) of a weekly GLP-1 shot. `restDay` is the weekday off
+// and `position` (from week.js, when the rest day has moved) the day's place
+// in the week, 0 for the rest day;
 // on it, without a target, this returns a rest day.
 // "User selected": a person's own day, made of their cardio and their choice of
 // lifting, as one session. `routine` is { cardio, minutes, strength } (keys
@@ -508,8 +515,8 @@ export function suggest(args = {}) {
   // a brisk walk, a hike at the gym an incline walk.
   if (cardio?.place === "gym" && gym === "outdoor") cardio = ROUTINE_CARDIO.walk;
   if (cardio?.place === "outdoor" && gym !== "outdoor") cardio = ROUTINE_CARDIO.inclineWalk;
-  const position = weekPosition(gymDay(date), Number(restDay) || 0);
-  if (!cardio || target || mode || extra || position === 0) return suggestDay(args);
+  const position = args.position ?? weekPosition(gymDay(date), Number(restDay) || 0);
+  if (!cardio || target || mode || extra || position === 0) return suggestDay({ ...args, position });
   const minutes = Number(routine.minutes) || 30;
   const turn = routine.strength === "fullBody" ? (position % 2 === 1 ? "fullBody" : null)
     : routine.strength === "none" ? null
@@ -539,7 +546,7 @@ export function suggest(args = {}) {
   };
 }
 
-function suggestDay({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, swaps = {}, mode = null, target = null, trainer = "ppl", shotDay = null, restDay = 0, extra = false } = {}) {
+function suggestDay({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, swaps = {}, mode = null, target = null, trainer = "ppl", shotDay = null, restDay = 0, position = null, extra = false } = {}) {
   const plan = AIMS[aim] ? aim : "maintain";
   const coachKey = TRAINERS[trainer] ? trainer : "none";
   const coach = TRAINERS[coachKey];
@@ -548,23 +555,23 @@ function suggestDay({ date = new Date(), aim = "maintain", gym = "pf", shuffle =
   const window = timeWindow(date);
   const shot = shotDay === null || shotDay === "" ? null : Number(shotDay);
   const shotSoon = coachKey === "glp1" && shot !== null && (day === shot || day === (shot + 1) % 7);
-  const off = Number(restDay) || 0;
-  let runDay = TARGETS[target] ? null : coach.runs?.[weekPosition(day, off)];
+  const pos = position ?? weekPosition(day, Number(restDay) || 0);
+  let runDay = TARGETS[target] ? null : coach.runs?.[pos];
   let split = null;
   if (TARGETS[target]) split = { key: target, ...TARGETS[target] };
   else if (runDay) split = runDay.split ? { key: runDay.split, ...splitByKey(runDay.split) } : null;
-  else split = splitFor(day, off);
+  else split = splitAt(pos);
   // Strength only on a run day drops the run; a run-only day lifts the
   // standard plan's split for that day instead.
   if (mode === "strength" && runDay) {
-    split ??= splitFor(day, off);
+    split ??= splitAt(pos);
     runDay = null;
   }
   // An extra session is just its cardio or its lifting: no run day, and
   // always something to do.
   if (extra) {
     runDay = null;
-    split ??= splitFor(day, off) ?? { key: "legs", ...TARGETS.legs };
+    split ??= splitAt(pos) ?? { key: "legs", ...TARGETS.legs };
   }
   // An unexpected rest day is a rest day like the scheduled one.
   if (mode === "rest") {
@@ -575,7 +582,7 @@ function suggestDay({ date = new Date(), aim = "maintain", gym = "pf", shuffle =
   // between. Strength only on a cardio day lifts full body too.
   let cardioDay = false;
   if (coach.fullBodyWeek && split && !TARGETS[target] && !extra && mode !== "rest") {
-    if (weekPosition(day, off) % 2 === 1 || mode === "strength") split = { key: "fullBody", ...TARGETS.fullBody };
+    if (pos % 2 === 1 || mode === "strength") split = { key: "fullBody", ...TARGETS.fullBody };
     else if (mode !== "cardio") cardioDay = true;
   }
   if (split && coach.mainSwap?.[split.key] && !TARGETS[target] && gym !== "outdoor") split = { ...split, slots: [coach.mainSwap[split.key], ...split.slots.slice(1)] };

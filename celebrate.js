@@ -5,12 +5,11 @@
 // the day was taken off with the "Unexpected rest day" override and
 // `streakBreak` that taking it cost the streak.
 import { previousDay } from "./day.js";
+import { weekdayOf, isRestDate, trainingWeek, weekDays } from "./week.js";
 
-// Weekday (Sunday is 0) of a day key like "2026-10-23".
-export function weekdayOf(key) {
-  const [y, m, d] = key.split("-").map(Number);
-  return new Date(y, m - 1, d, 12).getDay();
-}
+export { weekdayOf, trainingWeek, weekDays };
+
+// `restDay` below is the rest weekday or its history (see week.js).
 
 const isComplete = (locked, key) => Boolean(locked[key]?.complete);
 
@@ -25,7 +24,7 @@ export function streak(locked, today, restDay) {
   let count = 0;
   let key = isComplete(locked, today) || locked[today]?.unexpectedRest ? today : previousDay(today);
   for (let i = 0; i < 1000; i++, key = previousDay(key)) {
-    if (weekdayOf(key) === restDay) continue;
+    if (isRestDate(restDay, key)) continue;
     if (isWorkout(locked, key)) {
       count++;
       continue;
@@ -62,21 +61,6 @@ export function pastSeven(locked, today) {
   let count = 0;
   for (let i = 0, key = today; i < 7; i++, key = previousDay(key)) if (isWorkout(locked, key)) count++;
   return count;
-}
-
-// The training week holding `today`: the day after the rest day through the
-// rest day itself. Returns its first day's key (the week's id) and the six
-// training days.
-export function trainingWeek(today, restDay) {
-  let start = today;
-  while ((weekdayOf(start) - restDay + 7) % 7 !== 1) start = previousDay(start);
-  const days = [];
-  const [y, m, d] = start.split("-").map(Number);
-  for (let i = 0; i < 6; i++) {
-    const date = new Date(y, m - 1, d + i, 12);
-    days.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`);
-  }
-  return { id: start, days };
 }
 
 // Locksmith levels by full weeks.
@@ -121,7 +105,8 @@ export function celebrate({ locked, today, restDay, achievements, rest }) {
     done.fullWeeks++;
     const rank = level(done.fullWeeks);
     const times = done.fullWeeks > 1 ? ` That's ${done.fullWeeks} full weeks.` : "";
-    badges.push({ icon: "🏆", text: `You locked in this week: all six days' goals met. ${rank} level achieved.${times}` });
+    const all = week.days.length === 6 ? "all six days'" : `all ${week.days.length} days'`;
+    badges.push({ icon: "🏆", text: `You locked in this week: ${all} goals met. ${rank} level achieved.${times}` });
   }
   const seven = pastSeven(locked, today);
   if (seven >= 5 && !weekDone) badges.push({ icon: "💪", text: `You locked in ${seven} of the past 7 days. Arnold would be proud.` });
@@ -144,14 +129,6 @@ export function celebrate({ locked, today, restDay, achievements, rest }) {
 export const CARDIO_GOAL = 150;
 export const CARDIO_HIGH = 300;
 export const STRENGTH_DAYS = 2;
-
-// All seven days of the training week holding `today`, rest day last.
-export function weekDays(today, restDay) {
-  const { days } = trainingWeek(today, restDay);
-  const [y, m, d] = days[5].split("-").map(Number);
-  const last = new Date(y, m - 1, d + 1, 12);
-  return [...days, `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, "0")}-${String(last.getDate()).padStart(2, "0")}`];
-}
 
 export function weekStats(locked, today, restDay) {
   const stats = { gymDays: 0, strengthDays: 0, cardioMinutes: 0 };
