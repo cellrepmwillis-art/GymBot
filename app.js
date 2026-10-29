@@ -2,11 +2,12 @@ import { dayKey, previousDay, nextReset } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned, sessionLimits, ROUTINE_CARDIO, ROUTINE_STRENGTH } from "./workouts.js";
 import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weeklyBadges, trainingWeek, weekDays, CARDIO_GOAL, STRENGTH_DAYS } from "./celebrate.js";
 import { restDayOn, isRestDate, planPosition } from "./week.js";
+import { HEALING_AREAS, HEALING_KINDS, HEALING_DAYS, activeHealing, healingContext } from "./healing.js";
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-28 · 12:00 PM";
+const VERSION = "2026-10-29 · 12:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -39,6 +40,8 @@ function load() {
   // changing it midweek doesn't rewrite the days already done. restAck: the
   // day "Lock in anyway" was tapped on the rest day, so the reminder shows
   // once.
+  // healing: { area, kind, since }, a new tattoo or minor injury the plan
+  // works around for 14 days from `since` (see healing.js), or null.
   // weightLb: for calories burned and the protein target, or null.
   // heightIn: for the protein target, or null.
   // routine: "User selected", { cardio, minutes, strength }, and useRoutine
@@ -57,7 +60,7 @@ function load() {
   // behind the milestones (see celebrate.js). A lock's `complete` says every
   // item that day is locked, `celebrated` that the celebration was shown.
   const defaults = {
-    aim: "maintain", gym: "pf", trainer: "none", shotDay: "", restDay: 0, restHistory: null, restAck: null, weightLb: null,
+    aim: "maintain", gym: "pf", trainer: "none", shotDay: "", restDay: 0, restHistory: null, restAck: null, healing: null, weightLb: null,
     locked: {}, focus: null, apiKey: "", chat: null, achievements: { completeDays: 0, fullWeeks: 0, weeks: [] },
     weighIns: [], weightStart: null, weightSetDay: null, heightIn: null, routine: null, useRoutine: false,
   };
@@ -117,7 +120,7 @@ const todaysTarget = () => (state.focus?.day === dayKey() && TARGETS[state.focus
 
 // The workout for `date` with the current settings.
 const workout = (date, target, shuffle = 0, swaps = {}, mode = null, extra = false, routine = null) =>
-  suggest({ date, aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay, restDay: restDayOn(rests(), dayKey(date)), position: planPosition(dayKey(date), rests()), target, shuffle, swaps, mode, extra, routine });
+  suggest({ date, aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay, restDay: restDayOn(rests(), dayKey(date)), position: planPosition(dayKey(date), rests()), healing: activeHealing(state.healing, dayKey(date)), target, shuffle, swaps, mode, extra, routine });
 
 // The rest day and its history, for week.js.
 const rests = () => (state.restHistory?.length ? state.restHistory : Number(state.restDay));
@@ -316,7 +319,7 @@ function renderOptions() {
     ? `Today: unexpected rest day${target ? ` (${TARGET_LABELS[target]} if you work out anyway)` : ""}`
     : today.rest
     ? "Today: rest day · stretching only"
-    : `Today: ${displayName(today)}`;
+    : `Today: ${displayName(today)}${today.healingChange === "swapped" || today.healingChange === "trimmed" ? ` · around your ${HEALING_AREAS[activeHealing(state.healing, dayKey()).area].toLowerCase()}` : ""}`;
 
   // Default and My routine last until changed; a body part is for today.
   const focusChoices = [[null, "Default"], ["routine", "User selected"], ...Object.entries(TARGET_LABELS)];
@@ -1070,6 +1073,8 @@ function workoutContext() {
   if (w.trainer !== "none") parts.push(`Training style: ${TRAINERS[w.trainer].label}.`);
   if (w.trainer === "glp1" && w.health?.some((n) => n.startsWith("Shot day"))) parts.push("It's my shot day or the day after.");
   parts.push(`Gym: ${GYMS[state.gym]?.label ?? GYMS.pf.label}.`);
+  const healing = activeHealing(state.healing, dayKey());
+  if (healing) parts.push(healingContext(healing));
   return parts.join(" ");
 }
 
@@ -1162,8 +1167,32 @@ function showSettingsHints() {
 }
 $("settings-form").addEventListener("input", showSettingsHints);
 
+for (const [key, label] of Object.entries(HEALING_AREAS)) $("healing-area").add(new Option(label, key));
+for (const [key, label] of Object.entries(HEALING_KINDS)) $("healing-kind").add(new Option(label, key));
+
+// The healing fields: what kind only once there's an area, and how long
+// the one already set has left.
+function showHealing() {
+  const area = $("healing-area").value;
+  $("healing-kind-row").hidden = !area;
+  const active = activeHealing(state.healing, dayKey());
+  const same = active && active.area === area && active.kind === $("healing-kind").value;
+  $("healing-note").hidden = !same;
+  if (same) {
+    const ends = dateOfKey(active.since);
+    ends.setDate(ends.getDate() + HEALING_DAYS);
+    $("healing-note").textContent = `${active.daysLeft} ${active.daysLeft === 1 ? "day" : "days"} left: the plan goes back to normal on ${ends.toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}.`;
+  }
+}
+$("healing-area").addEventListener("change", showHealing);
+$("healing-kind").addEventListener("change", showHealing);
+
 function openSettings() {
   $("rest-input").value = String(state.restDay);
+  const healing = activeHealing(state.healing, dayKey());
+  $("healing-area").value = healing?.area ?? "";
+  $("healing-kind").value = healing?.kind ?? "tattoo";
+  showHealing();
   $("weight-input").value = state.weightLb ?? "";
   $("feet-input").value = state.heightIn ? Math.floor(state.heightIn / 12) : "";
   $("inches-input").value = state.heightIn ? state.heightIn % 12 : "";
@@ -1230,6 +1259,11 @@ function setRestDay(day) {
 $("settings").addEventListener("close", () => {
   if ($("settings").returnValue !== "save") return;
   setRestDay(Number($("rest-input").value));
+  // A changed area or kind starts its 14 days today.
+  const area = $("healing-area").value;
+  const kind = $("healing-kind").value;
+  const healing = activeHealing(state.healing, dayKey());
+  state.healing = !area ? null : healing?.area === area && healing.kind === kind ? state.healing : { area, kind, since: dayKey() };
   const feet = Number($("feet-input").value);
   const inches = Number($("inches-input").value);
   state.heightIn = feet || inches ? feet * 12 + inches : null;

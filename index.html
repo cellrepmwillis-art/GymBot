@@ -302,6 +302,17 @@
         </select>
       </label>
       <label class="field">
+        <span>Healing: a new tattoo or minor injury (the plan works around it for 14 days)</span>
+        <select id="healing-area">
+          <option value="">Nothing healing</option>
+        </select>
+      </label>
+      <label class="field" id="healing-kind-row" hidden>
+        <span>What is it?</span>
+        <select id="healing-kind"></select>
+      </label>
+      <p class="muted small" id="healing-note" hidden></p>
+      <label class="field">
         <span>Your weight (lb), for calories burned</span>
         <input id="weight-input" type="number" min="50" max="700" step="any" inputmode="decimal">
       </label>

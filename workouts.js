@@ -5,6 +5,7 @@
 // Barbells and squat racks are only used for Anytime Fitness style gyms,
 // since most Planet Fitness clubs don't have them.
 import { RESET_HOUR } from "./day.js";
+import { works, insteadOf, fullBodySlotsAvoiding, healingNotes, healingHealth } from "./healing.js";
 import { TRAINERS, RUNNER_LEGS } from "./trainers.js";
 import { MET } from "./met.js";
 import { OUTDOOR } from "./outdoor.js";
@@ -509,6 +510,21 @@ const MAX_CHOICES = 3;
 // no body part is picked and no override is on; the rest day stays a rest
 // day. `routine.part` swaps the day's body part for another, or "none".
 export function suggest(args = {}) {
+  return withHealing(suggestPlan(args), args.healing, args.gym);
+}
+
+// Healing tips first, within the limits.
+function withHealing(w, healing, gym) {
+  if (!healing) return w;
+  const notes = w.rest ? [] : healingNotes(healing, { change: w.healingChange ?? null, gym, lifting: w.items.some((item) => item.kind === "lift") });
+  return {
+    ...w,
+    notes: [...notes, ...w.notes].slice(0, MAX_TIPS),
+    health: [...healingHealth(healing), ...(w.health ?? [])].slice(0, MAX_TIPS),
+  };
+}
+
+function suggestPlan(args) {
   const { routine, target, mode, extra, date = new Date(), restDay = 0, gym = "pf" } = args;
   let cardio = routine && ROUTINE_CARDIO[routine.cardio];
   // Cardio that doesn't fit the gym gives way: a treadmill outdoors becomes
@@ -518,13 +534,19 @@ export function suggest(args = {}) {
   const position = args.position ?? weekPosition(gymDay(date), Number(restDay) || 0);
   if (!cardio || target || mode || extra || position === 0) return suggestDay({ ...args, position });
   const minutes = Number(routine.minutes) || 30;
-  const turn = routine.strength === "fullBody" ? (position % 2 === 1 ? "fullBody" : null)
+  let turn = routine.strength === "fullBody" ? (position % 2 === 1 ? "fullBody" : null)
     : routine.strength === "none" ? null
     : ROUTINE_ROTATION[(position - 1) % ROUTINE_ROTATION.length];
+  // A healing area moves the turn to a body part that leaves it alone.
+  const healing = args.healing;
+  const moved = Boolean(healing && turn && turn !== "fullBody" && works(turn, healing.area));
+  if (moved) turn = insteadOf(healing.area);
   // A body part picked for the day ("none" for just the cardio) replaces
   // the routine's turn.
+  const picked = routine.part === "none" || Boolean(TARGETS[routine.part]);
   const lifting = routine.part === "none" ? null : TARGETS[routine.part] ? routine.part : turn;
-  const w = suggestDay({ ...args, target: lifting, mode: lifting ? null : "cardio" });
+  const w = suggestDay({ ...args, target: lifting, mode: lifting ? null : "cardio", planTarget: !picked });
+  if (moved && !picked) w.healingChange = "swapped";
   // The routine's cardio replaces the plan's.
   const cardioItem = w.items.find((item) => item.kind === "cardio" || item.kind === "run");
   const text = cardio.text(minutes);
@@ -546,7 +568,7 @@ export function suggest(args = {}) {
   };
 }
 
-function suggestDay({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, swaps = {}, mode = null, target = null, trainer = "ppl", shotDay = null, restDay = 0, position = null, extra = false } = {}) {
+function suggestDay({ date = new Date(), aim = "maintain", gym = "pf", shuffle = 0, swaps = {}, mode = null, target = null, trainer = "ppl", shotDay = null, restDay = 0, position = null, extra = false, healing = null, planTarget = false } = {}) {
   const plan = AIMS[aim] ? aim : "maintain";
   const coachKey = TRAINERS[trainer] ? trainer : "none";
   const coach = TRAINERS[coachKey];
@@ -585,9 +607,23 @@ function suggestDay({ date = new Date(), aim = "maintain", gym = "pf", shuffle =
     if (pos % 2 === 1 || mode === "strength") split = { key: "fullBody", ...TARGETS.fullBody };
     else if (mode !== "cardio") cardioDay = true;
   }
+  // Healing (a new tattoo or minor injury): a day that works that area
+  // trains something else, full body drops the moves that work it, and a
+  // body part picked by hand stays, with a caution in the tips.
+  let healingChange = null;
+  if (healing && split && works(split.key, healing.area)) {
+    if (TARGETS[target] && !planTarget && split.key !== "fullBody") healingChange = "picked";
+    else if (split.key === "fullBody") healingChange = "trimmed";
+    else {
+      const key = insteadOf(healing.area);
+      split = { key, ...TARGETS[key] };
+      healingChange = "swapped";
+    }
+  }
   if (split && coach.mainSwap?.[split.key] && !TARGETS[target] && gym !== "outdoor") split = { ...split, slots: [coach.mainSwap[split.key], ...split.slots.slice(1)] };
   // Outdoors & home: the same day, with no-gym exercises.
   if (split && gym === "outdoor") split = { ...split, slots: OUTDOOR[split.key] ?? split.slots };
+  if (healingChange === "trimmed") split = { ...split, slots: fullBodySlotsAvoiding(healing.area).map((i) => split.slots[i]) };
   const ctx = { plan, split, window, gym, shotSoon };
   const sources = coach.sources;
   const base = { day: DAY_NAMES[day], window, aim: plan, trainer: coachKey, sources };
@@ -716,5 +752,6 @@ function suggestDay({ date = new Date(), aim = "maintain", gym = "pf", shuffle =
     cardio: cardioText,
     notes,
     health,
+    healingChange,
   };
 }
