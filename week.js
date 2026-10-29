@@ -36,25 +36,22 @@ export function restDayOn(schedule, key) {
 export const isRestDate = (schedule, key) => weekdayOf(key) === restDayOn(schedule, key);
 
 // The first day of the week holding `key`: the day after the last rest day
-// before it. Six days on with no rest day after them (the rest day moved
-// later in the week) starts a new week.
+// before it. The rest day always ends the week.
 export function weekStart(key, schedule) {
   let last = previousDay(key);
   for (let i = 0; i < 13 && !isRestDate(schedule, last); i++) last = previousDay(last);
-  let start = addDays(last, 1);
-  while (between(start, key) > 6 || (between(start, key) === 6 && !isRestDate(schedule, key))) start = addDays(start, 6);
-  return start;
+  return addDays(last, 1);
 }
 
 // Every day of the week holding `key`, its rest day last: seven days, or
-// fewer the week the rest day moves earlier.
+// fewer or more the week the rest day moves.
 export function weekDays(key, schedule) {
   const days = [];
-  for (let day = weekStart(key, schedule); ; day = addDays(day, 1)) {
+  for (let day = weekStart(key, schedule); days.length < 14; day = addDays(day, 1)) {
     days.push(day);
-    if (isRestDate(schedule, day)) return days;
-    if (days.length === 6 && !isRestDate(schedule, addDays(day, 1))) return days;
+    if (isRestDate(schedule, day)) break;
   }
+  return days;
 }
 
 // The week's id (its first day) and its training days.
@@ -64,8 +61,9 @@ export function trainingWeek(key, schedule) {
 }
 
 // Where `key` falls in its week: 1 to 6 for training days, 0 on the rest
-// day. With an unchanged rest day it's the weekday's place after it.
+// day. With an unchanged rest day it's the weekday's place after it. (The
+// week the rest day moves, stretch.js plans the days instead.)
 export function planPosition(key, schedule) {
   if (isRestDate(schedule, key)) return 0;
-  return between(weekStart(key, schedule), key) + 1;
+  return (between(weekStart(key, schedule), key) % 6) + 1;
 }

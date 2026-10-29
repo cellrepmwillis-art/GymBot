@@ -97,7 +97,7 @@ button.primary { background: var(--accent); color: var(--accent-text); border-co
 .now-head, .plan-head { flex-wrap: wrap; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .now-split { margin: 12px 0; font-weight: 600; }
 
-.week { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.week { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
 .week li {
   text-align: center;
   font-size: 0.8rem;
@@ -107,6 +107,8 @@ button.primary { background: var(--accent); color: var(--accent-text); border-co
   color: var(--muted);
   border: 2px solid transparent;
 }
+.week.long { gap: 3px; }
+.week.long li { font-size: 0.7rem; }
 .week li.today { border-color: var(--accent); color: var(--text); font-weight: 600; }
 .week li.done { background: var(--accent); color: var(--accent-text); }
 .week li .mark { display: block; font-size: 0.75rem; min-height: 1.4em; font-variant-numeric: tabular-nums; }

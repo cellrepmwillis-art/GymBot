@@ -33,14 +33,14 @@ test("moving the rest day midweek carries on from the days already done", () => 
   assert.deepEqual(weekDays("2026-10-30", schedule), [...keys(30, 2), "2026-11-01", "2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05"]);
 });
 
-test("moving the rest day later fills the extra days", () => {
+test("moving the rest day later makes one longer week", () => {
   // Sunday off, moved to Tuesday on Wednesday (after this week's Tuesday).
   const schedule = [{ from: "", day: 0 }, { from: "2026-10-28", day: 2 }];
-  // Mon–Sat as planned, then Sunday and Monday start a short week before
-  // the new rest day.
+  // Raw positions; the app plans that week's extra days with stretch.js.
   assert.deepEqual(positions(schedule, 26, 9), [1, 2, 3, 4, 5, 6, 1, 2, 0]);
-  assert.deepEqual(weekDays("2026-11-01", schedule), ["2026-11-01", "2026-11-02", "2026-11-03"]);
-  assert.deepEqual(weekDays("2026-10-28", schedule), keys(26, 6));
+  // One week, Monday through the new Tuesday rest day: the rest day ends it.
+  assert.deepEqual(weekDays("2026-11-01", schedule), [...keys(26, 6), "2026-11-01", "2026-11-02", "2026-11-03"]);
+  assert.deepEqual(weekDays("2026-10-28", schedule), weekDays("2026-11-01", schedule));
 });
 
 test("days before the change keep their rest day", () => {

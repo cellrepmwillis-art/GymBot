@@ -2,13 +2,14 @@ import { dayKey, previousDay, nextReset } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned, sessionLimits, ROUTINE_CARDIO, ROUTINE_STRENGTH } from "./workouts.js";
 import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weeklyBadges, trainingWeek, weekDays, CARDIO_GOAL, STRENGTH_DAYS } from "./celebrate.js";
 import { restDayOn, isRestDate, planPosition, addDays, weekdayOf, trainingWeek as planWeek } from "./week.js";
+import { stretchPositions } from "./stretch.js";
 import { backToBackRests, bodyPart, partName, extraDays } from "./backtoback.js";
 import { HEALING_AREAS, HEALING_KINDS, HEALING_DAYS, activeHealing, healingContext } from "./healing.js";
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-30 · 3:00 PM";
+const VERSION = "2026-10-30 · 6:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -76,6 +77,7 @@ function load() {
 }
 
 function save() {
+  stretchCache.clear();
   const cutoff = Date.now() - KEEP_DAYS * 24 * 60 * 60 * 1000;
   for (const [day, lock] of Object.entries(state.locked)) if (lock.at < cutoff) delete state.locked[day];
   try {
@@ -124,7 +126,60 @@ const todaysTarget = () => (state.focus?.day === dayKey() && TARGETS[state.focus
 
 // The workout for `date` with the current settings.
 const workout = (date, target, shuffle = 0, swaps = {}, mode = null, extra = false, routine = null) =>
-  suggest({ date, aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay, restDay: restDayOn(rests(), dayKey(date)), position: planPosition(dayKey(date), rests()), healing: activeHealing(state.healing, dayKey(date)), target, shuffle, swaps, mode, extra, routine });
+  planDay(dayKey(date), rests(), { date, target, shuffle, swaps, mode, extra, routine });
+
+// A day's plan under a rest-day `schedule` (the current one, or one being
+// considered). The week the rest day moves, its place in the week comes
+// from stretch.js; a day with nothing left to do becomes a cardio day.
+function planDay(key, schedule, { date = dateOfKey(key, 17), target = null, shuffle = 0, swaps = {}, mode = null, extra = false, routine = null, healing = activeHealing(state.healing, key) } = {}) {
+  const moved = movedPosition(key, schedule);
+  const filler = moved === 0 && !target && !extra && mode !== "rest";
+  const w = suggest({
+    date, aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay, restDay: restDayOn(schedule, key),
+    position: moved || planPosition(key, schedule), healing, target, shuffle, swaps, mode: filler && mode !== "strength" ? "cardio" : mode, extra, routine,
+  });
+  if (!filler || mode === "strength" || w.rest) return w;
+  return {
+    ...w, mode: null, routine: false, title: "Cardio day",
+    focus: "This week's body parts are done; the plan starts again after your rest day",
+    notes: ["Your rest day moved, so this week has a day more than its workouts. Nothing gets done twice: cardio today, and the plan starts again after your rest day.", ...w.notes].slice(0, 5),
+  };
+}
+
+// The stretch between rest days holding `key`, when the rest day moved
+// (not six training days): its days' positions, worked out once per
+// render. Null for a normal week.
+const stretchCache = new Map();
+function movedPosition(key, schedule) {
+  if (isRestDate(schedule, key)) return null;
+  let last = previousDay(key);
+  for (let i = 0; i < 14 && !isRestDate(schedule, last); i++) last = previousDay(last);
+  const id = `${last}|${dayKey()}|${JSON.stringify(schedule)}`;
+  if (!stretchCache.has(id)) stretchCache.set(id, movedStretch(last, schedule));
+  return stretchCache.get(id)?.get(key) ?? null;
+}
+
+function movedStretch(last, schedule) {
+  const days = [];
+  for (let day = addDays(last, 1); days.length < 14 && !isRestDate(schedule, day); day = addDays(day, 1)) days.push(day);
+  if (days.length === 6 || !Array.isArray(schedule)) return null;
+  const end = addDays(days.at(-1), 1);
+  const change = [...schedule].reverse().find((entry) => entry.from > last && entry.from <= end);
+  const at = (key, position, lock) => suggest({
+    date: dateOfKey(key, 17), aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay,
+    restDay: restDayOn(schedule, key), position: position || 1, healing: activeHealing(state.healing, key),
+    target: lock?.focus ?? null, mode: lock?.mode ?? (position ? null : "cardio"), routine: lock ? lock.routine : activeRoutine(),
+  });
+  return stretchPositions({
+    days, from: change?.from ?? days[0], today: dayKey(),
+    partAt: (position) => liftedPart(at(days[0], position)) ?? "cardio",
+    donePart: (key, position) => {
+      const lock = state.locked[key];
+      if (!lock?.done?.length || lock.mode === "rest") return null;
+      return liftedPart(at(key, position, lock)) ?? "cardio";
+    },
+  });
+}
 
 // The rest day and its history, for week.js.
 const rests = () => (state.restHistory?.length ? state.restHistory : Number(state.restDay));
@@ -229,10 +284,7 @@ const liftedPart = (w) => (!w.rest && w.items.some((item) => item.kind === "lift
 
 // The plan for day `key` under a rest-day `schedule`, which may be one
 // being considered; healing is as it is today.
-const planFor = (key, schedule) => suggest({
-  date: dateOfKey(key, 17), aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay,
-  restDay: restDayOn(schedule, key), position: planPosition(key, schedule), healing: activeHealing(state.healing, dayKey()), routine: activeRoutine(),
-});
+const planFor = (key, schedule) => planDay(key, schedule, { healing: activeHealing(state.healing, dayKey()), routine: activeRoutine() });
 
 // Days from today on that would train a body part more often in 7 days
 // than the plan's normal week does, under `schedule` (the current one by
@@ -248,7 +300,7 @@ function extraPartDays(schedule = rests()) {
   const keys = Array.from({ length: 20 }, (_, i) => addDays(today, i - 6));
   const parts = keys.map((key) => {
     const lock = state.locked[key];
-    if (key < today) return lock && lock.mode !== "rest" ? liftedPart(workout(dateOfKey(key, 17), lock.focus, lock.shuffle, lock.swaps, lock.mode, false, lock.routine)) : null;
+    if (key < today) return lock?.done?.length && lock.mode !== "rest" ? liftedPart(workout(dateOfKey(key, 17), lock.focus, lock.shuffle, lock.swaps, lock.mode, false, lock.routine)) : null;
     if (key === today && lock) return lock.mode === "rest" ? null : liftedPart(workout(dateOfKey(key, 17), lock.focus, lock.shuffle, lock.swaps, lock.mode, false, lock.routine));
     if (isRestDate(schedule, key) || (key > today && state.autoRests?.[key])) return null;
     return liftedPart(planFor(key, schedule));
@@ -306,7 +358,10 @@ function renderWeekStrip(container) {
   const restDay = rests();
   let workouts = 0;
   let burned = 0;
-  container.replaceChildren(...weekDays(today, restDay).map((key) => {
+  const days = weekDays(today, restDay);
+  // The week the rest day moves later can be longer than seven days.
+  container.classList.toggle("long", days.length > 7);
+  container.replaceChildren(...days.map((key) => {
     const lock = state.locked[key];
     const [y, m, d] = key.split("-").map(Number);
     const weekday = new Date(y, m - 1, d, 12).getDay();
@@ -1497,6 +1552,7 @@ function screenNow() {
 }
 
 function render() {
+  stretchCache.clear();
   // A day being edited stops being editable once it's no longer an earlier
   // day of this week (after midnight on the rest day, say).
   if (viewDay && (viewDay >= dayKey() || !weekDays(dayKey(), rests()).includes(viewDay))) viewDay = null;
