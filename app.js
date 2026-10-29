@@ -1,14 +1,14 @@
 import { dayKey, previousDay, nextReset } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned, sessionLimits, ROUTINE_CARDIO, ROUTINE_STRENGTH } from "./workouts.js";
 import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weeklyBadges, trainingWeek, weekDays, CARDIO_GOAL, STRENGTH_DAYS } from "./celebrate.js";
-import { restDayOn, isRestDate, planPosition } from "./week.js";
+import { restDayOn, isRestDate, planPosition, addDays, weekdayOf } from "./week.js";
 import { backToBackRests, bodyPart, partName } from "./backtoback.js";
 import { HEALING_AREAS, HEALING_KINDS, HEALING_DAYS, activeHealing, healingContext } from "./healing.js";
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-29 · 3:00 PM";
+const VERSION = "2026-10-29 · 6:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -1238,6 +1238,7 @@ $("healing-kind").addEventListener("change", showHealing);
 
 function openSettings() {
   $("rest-input").value = String(state.restDay);
+  showRestNote();
   const healing = activeHealing(state.healing, dayKey());
   $("healing-area").value = healing?.area ?? "";
   $("healing-kind").value = healing?.kind ?? "tattoo";
@@ -1294,16 +1295,76 @@ $("restore-file").addEventListener("change", async () => {
   render();
 });
 
-// A new rest day applies from today on: earlier days keep the week they
-// were done in, and the rest of this week carries on from them.
-function setRestDay(day) {
-  if (day === Number(state.restDay)) return;
-  const today = dayKey();
-  const history = (state.restHistory ?? [{ from: "", day: Number(state.restDay) }]).filter((entry) => entry.from < today);
-  if (history.at(-1)?.day !== day) history.push({ from: today, day });
+// Changing the rest day can't soft-reset the week. Picked ahead of time, it
+// starts after this week's rest day and this week stays as it is. Picked
+// on the day itself (today off), it asks first: an unexpected rest day, or
+// the new rest day from today on, which re-plans the rest of the week and
+// is allowed once a week.
+const restHistory = () => state.restHistory ?? [{ from: "", day: Number(state.restDay) }];
+
+// The first day after this week's rest day, when a change made today starts.
+function nextWeekStart() {
+  const days = weekDays(dayKey(), rests());
+  return addDays(days.at(-1), 1);
+}
+
+function scheduleRestDay(day, from) {
+  const history = restHistory().filter((entry) => entry.from < from);
+  if (history.at(-1)?.day !== day) history.push({ from, day, ...(from === dayKey() ? { now: true } : {}) });
   state.restHistory = history;
   state.restDay = day;
 }
+
+// A rest day made today, on the day, in the past week.
+const changedNowThisWeek = () => restHistory().some((entry) => entry.now && entry.from > addDays(dayKey(), -7));
+
+function setRestDay(day) {
+  if (day === Number(state.restDay)) return;
+  const today = dayKey();
+  if (day === weekdayOf(today) && !isRestDate(rests(), today)) {
+    askAtlas(day);
+    return;
+  }
+  scheduleRestDay(day, nextWeekStart());
+}
+
+function askAtlas(day) {
+  const name = DAY_NAMES[day];
+  const used = changedNowThisWeek();
+  $("atlas-text").textContent = `Making today, ${name}, your rest day on the day would reset the week. Missed workouts are yours to own, so pick how today goes.`;
+  const now = $("atlas-choice").options[1];
+  now.textContent = `New rest day: ${name}, from today`;
+  now.disabled = used;
+  $("atlas-choice").value = "unexpected";
+  $("atlas-note").textContent = used
+    ? "The rest day already moved on the day once this week, so today can only be an unexpected rest day."
+    : `Making it your rest day re-plans the rest of this week and every week after. That can only be done once a week. Picking ${name} before the day starts it next week instead.`;
+  $("atlas-dialog").dataset.day = String(day);
+  $("atlas-dialog").showModal();
+}
+
+$("atlas-dialog").addEventListener("close", () => {
+  if ($("atlas-dialog").returnValue !== "yes") return;
+  if ($("atlas-choice").value === "now" && !changedNowThisWeek()) {
+    scheduleRestDay(Number($("atlas-dialog").dataset.day), dayKey());
+    save();
+    render();
+  } else askUnexpectedRest();
+});
+
+// What Settings says about a rest day that starts next week.
+function showRestNote() {
+  const today = dayKey();
+  const pending = restHistory().find((entry) => entry.from > today);
+  const picked = Number($("rest-input").value);
+  const starts = picked === Number(state.restDay) ? pending?.from : picked === weekdayOf(today) && !isRestDate(rests(), today) ? null : nextWeekStart();
+  $("rest-note").hidden = !starts || picked === restDayOn(rests(), today);
+  if (!$("rest-note").hidden) {
+    const current = DAY_NAMES[restDayOn(rests(), today)];
+    $("rest-note").textContent = `${DAY_NAMES[picked]} starts after this week's rest day: this week keeps ${current}, and the new week begins ${dateOfKey(starts).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}.`;
+  }
+}
+$("rest-input").addEventListener("change", showRestNote);
 
 $("settings").addEventListener("close", () => {
   if ($("settings").returnValue !== "save") return;

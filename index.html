@@ -286,6 +286,25 @@
     </form>
   </dialog>
 
+  <dialog id="atlas-dialog" aria-labelledby="atlas-title">
+    <form method="dialog">
+      <h2 id="atlas-title">Atlas can't drop the world without notice.</h2>
+      <p id="atlas-text"></p>
+      <label class="field">
+        <span>What happens today</span>
+        <select id="atlas-choice">
+          <option value="unexpected">Unexpected rest day today</option>
+          <option value="now"></option>
+        </select>
+      </label>
+      <p id="atlas-note" class="muted small"></p>
+      <div class="row">
+        <button value="no">Never mind</button>
+        <button value="yes" class="primary">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="settings">
     <form method="dialog" id="settings-form">
       <h2>Settings</h2>
@@ -301,6 +320,7 @@
           <option value="6">Saturday</option>
         </select>
       </label>
+      <p class="muted small" id="rest-note" hidden></p>
       <label class="field">
         <span>Healing: a new tattoo or minor injury (the plan works around it for 14 days)</span>
         <select id="healing-area">
