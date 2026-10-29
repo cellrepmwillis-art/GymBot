@@ -9,7 +9,7 @@ import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-30 · 9:00 PM";
+const VERSION = "2026-10-31 · 12:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -358,6 +358,8 @@ function renderWeekStrip(container) {
   const restDay = rests();
   let workouts = 0;
   let burned = 0;
+  // Days before GymBot was first used aren't missed.
+  const firstDay = Object.keys(state.locked).sort()[0] ?? today;
   container.replaceChildren(...weekDays(today, restDay).map((key) => {
     const lock = state.locked[key];
     const [y, m, d] = key.split("-").map(Number);
@@ -368,7 +370,8 @@ function renderWeekStrip(container) {
     mark.className = "mark";
     if (lock?.unexpectedRest && lock.mode === "rest") mark.textContent = "💤";
     else if (lock?.total?.burned ?? lock?.burned) mark.textContent = lock.total?.burned ?? lock.burned;
-    else mark.textContent = lock?.done?.length ? "✓" : isRestDate(restDay, key) ? "–" : state.autoRests?.[key] && key >= today ? "💤" : "";
+    else mark.textContent = lock?.done?.length ? "✓" : isRestDate(restDay, key) ? "–" : state.autoRests?.[key] ? "💤" : key < today && key >= firstDay ? "✗" : "";
+    li.classList.toggle("missed", mark.textContent === "✗");
     li.append(mark);
     li.classList.toggle("today", key === today);
     li.classList.toggle("done", Boolean(lock?.done?.length));
@@ -874,7 +877,12 @@ function renderWorkout() {
 
     li.append(toggle, body);
     li.addEventListener("click", () => {
-      if (done.has(item.id)) done.delete(item.id); else done.add(item.id);
+      if (done.has(item.id)) done.delete(item.id);
+      else {
+        done.add(item.id);
+        // When the latest workout was, for moving the rest day earlier.
+        if (!viewDay && !w.rest) lock.lockedAt = Date.now();
+      }
       // Keep locks from other versions of today (the workout behind an
       // override or a rest day), so they're back if it is.
       lock.done = [...lock.done.filter((id) => !ids.has(id)), ...done];
@@ -1417,18 +1425,41 @@ const changedNowThisWeek = () => restHistory().some((entry) => entry.now && entr
 function setRestDay(day) {
   if (day === Number(state.restDay)) return;
   const today = dayKey();
-  if (day === weekdayOf(today) && !isRestDate(rests(), today)) {
+  if ((day === weekdayOf(today) && !isRestDate(rests(), today)) || (movesEarlier(day) && !earlierWindowOpen())) {
     askAtlas(day);
     return;
   }
   askWhen(day);
 }
 
+// Whether `day` from today would end this week sooner than its rest day.
+function movesEarlier(day) {
+  const today = dayKey();
+  const schedule = [...restHistory().filter((entry) => entry.from < today), { from: today, day }];
+  return weekDays(today, schedule).at(-1) < weekDays(today, rests()).at(-1);
+}
+
+// This week's rest day can only move earlier for 24 hours after the latest
+// workout, or through the day after a rest day; after that it's an
+// unexpected rest day, and days not locked stay missed.
+function earlierWindowOpen() {
+  const today = dayKey();
+  let latest = 0;
+  for (const [key, lock] of Object.entries(state.locked)) {
+    if (key <= today && lock.done?.length && lock.mode !== "rest" && !lock.rest) latest = Math.max(latest, lock.lockedAt ?? lock.at ?? 0);
+  }
+  const yesterday = previousDay(today);
+  if (isRestDate(rests(), yesterday) || state.locked[yesterday]?.mode === "rest") latest = Math.max(latest, dateOfKey(today, 0).getTime());
+  return Date.now() < latest + 24 * 60 * 60 * 1000;
+}
+
 // How the weeks run if `day` becomes the rest day from `from`.
 function weekPreview(day, from) {
   const schedule = [...restHistory().filter((entry) => entry.from < from), { from, day }];
   const week = weekDays(dayKey(), schedule);
-  const next = weekDays(addDays(week.at(-1), 1), schedule);
+  // The days from after this week's rest day through the next one.
+  const next = [addDays(week.at(-1), 1)];
+  while (next.length < 14 && !isRestDate(schedule, next.at(-1))) next.push(addDays(next.at(-1), 1));
   const show = (key) => dateOfKey(key).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
   const end = isRestDate(schedule, week.at(-1)) ? `on its rest day, ${show(week.at(-1))}` : show(week.at(-1));
   return `This week ends ${end}. The next runs ${show(next[0])} to ${show(next.at(-1))}${isRestDate(schedule, next.at(-1)) ? ", its rest day" : ""}.`;
@@ -1470,15 +1501,24 @@ $("rest-when").addEventListener("close", () => {
 
 function askAtlas(day) {
   const name = DAY_NAMES[day];
+  const today = dayKey();
+  const onTheDay = day === weekdayOf(today);
+  const closed = movesEarlier(day) && !earlierWindowOpen();
   const used = changedNowThisWeek();
-  $("atlas-text").textContent = `Making today, ${name}, your rest day on the day would reset the week. Missed workouts are yours to own, so pick how today goes.`;
-  const now = $("atlas-choice").options[1];
-  now.textContent = `New rest day: ${name}, from today`;
-  now.disabled = used;
+  $("atlas-text").textContent = onTheDay
+    ? `Making today, ${name}, your rest day on the day would reset the week. Missed workouts are yours to own, so pick how today goes.`
+    : `This week's rest day can only move earlier within 24 hours of your last workout, or on the day after a rest day. Missed workouts are yours to own.`;
+  const [unexpected, now, next] = $("atlas-choice").options;
+  unexpected.hidden = false;
+  now.textContent = onTheDay ? `New rest day: ${name}, from today` : `New rest day: ${name}, this week`;
+  now.disabled = used || closed;
+  next.textContent = `New rest day: ${name}, starting next week`;
   $("atlas-choice").value = "unexpected";
-  $("atlas-note").textContent = used
-    ? "The rest day already moved on the day once this week, so today can only be an unexpected rest day."
-    : `Making it your rest day re-plans the rest of this week and every week after. That can only be done once a week. Picked ahead of time, a new rest day doesn't need this.`;
+  $("atlas-note").textContent = closed
+    ? "Days you didn't lock this week stay missed. Take an unexpected rest day today if you need one, or move the rest day for next week."
+    : used
+      ? "The rest day already moved once this week, so this week can only get an unexpected rest day."
+      : "Counts as an unexpected rest day; your rest day stays as it is.";
   $("atlas-dialog").dataset.day = String(day);
   $("atlas-dialog").showModal();
 }
@@ -1486,18 +1526,27 @@ function askAtlas(day) {
 $("atlas-choice").addEventListener("change", () => {
   const day = Number($("atlas-dialog").dataset.day);
   const now = $("atlas-choice").value === "now";
-  $("atlas-note").textContent = now
-    ? `Making it your rest day re-plans the rest of this week and every week after. That can only be done once a week.${extraWarning([...restHistory().filter((entry) => entry.from < dayKey()), { from: dayKey(), day }])}`
-    : "Counts as an unexpected rest day; your rest day stays as it is.";
+  const choice = $("atlas-choice").value;
+  const from = choice === "next" ? nextWeekStart() : dayKey();
+  $("atlas-note").textContent = choice === "now"
+    ? `Making it your rest day re-plans the rest of this week and every week after. That can only be done once a week.${extraWarning([...restHistory().filter((entry) => entry.from < from), { from, day }])}`
+    : choice === "next"
+      ? `This week stays as planned. ${weekPreview(day, from)}${extraWarning([...restHistory().filter((entry) => entry.from < from), { from, day }])}`
+      : "Counts as an unexpected rest day; your rest day stays as it is.";
 });
 
 $("atlas-dialog").addEventListener("close", () => {
   if ($("atlas-dialog").returnValue !== "yes") return;
-  if ($("atlas-choice").value === "now" && !changedNowThisWeek()) {
-    scheduleRestDay(Number($("atlas-dialog").dataset.day), dayKey());
-    save();
-    render();
-  } else askUnexpectedRest();
+  const day = Number($("atlas-dialog").dataset.day);
+  const choice = $("atlas-choice").value;
+  if (choice === "next") scheduleRestDay(day, nextWeekStart());
+  else if (choice === "now" && !$("atlas-choice").options[1].disabled) scheduleRestDay(day, dayKey());
+  else {
+    askUnexpectedRest();
+    return;
+  }
+  save();
+  render();
 });
 
 // What Settings says about the rest day: one still to start, or that

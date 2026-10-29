@@ -107,6 +107,7 @@ button.primary { background: var(--accent); color: var(--accent-text); border-co
   color: var(--muted);
   border: 2px solid transparent;
 }
+.week li.missed .mark { color: var(--accent); }
 .week li.today { border-color: var(--accent); color: var(--text); font-weight: 600; }
 .week li.done { background: var(--accent); color: var(--accent-text); }
 .week li .mark { display: block; font-size: 0.75rem; min-height: 1.4em; font-variant-numeric: tabular-nums; }
