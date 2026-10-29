@@ -35,23 +35,22 @@ export function restDayOn(schedule, key) {
 
 export const isRestDate = (schedule, key) => weekdayOf(key) === restDayOn(schedule, key);
 
-// The first day of the week holding `key`: the day after the last rest day
-// before it. The rest day always ends the week.
+// The first day after the last rest day before `key`, for the plan's
+// positions. (The week as it's shown is weekDays.)
 export function weekStart(key, schedule) {
   let last = previousDay(key);
   for (let i = 0; i < 13 && !isRestDate(schedule, last); i++) last = previousDay(last);
   return addDays(last, 1);
 }
 
-// Every day of the week holding `key`, its rest day last: seven days, or
-// fewer or more the week the rest day moves.
+// The week holding `key` as it's shown and counted: always seven days,
+// ending on the rest day that ends it (the first one from `key` on). The
+// week the rest day moves, that's a mix of days from either side of the
+// change.
 export function weekDays(key, schedule) {
-  const days = [];
-  for (let day = weekStart(key, schedule); days.length < 14; day = addDays(day, 1)) {
-    days.push(day);
-    if (isRestDate(schedule, day)) break;
-  }
-  return days;
+  let end = key;
+  for (let i = 0; i < 13 && !isRestDate(schedule, end); i++) end = addDays(end, 1);
+  return Array.from({ length: 7 }, (_, i) => addDays(end, i - 6));
 }
 
 // The week's id (its first day) and its training days.

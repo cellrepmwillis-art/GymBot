@@ -9,7 +9,7 @@ import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-30 · 6:00 PM";
+const VERSION = "2026-10-30 · 9:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -358,10 +358,7 @@ function renderWeekStrip(container) {
   const restDay = rests();
   let workouts = 0;
   let burned = 0;
-  const days = weekDays(today, restDay);
-  // The week the rest day moves later can be longer than seven days.
-  container.classList.toggle("long", days.length > 7);
-  container.replaceChildren(...days.map((key) => {
+  container.replaceChildren(...weekDays(today, restDay).map((key) => {
     const lock = state.locked[key];
     const [y, m, d] = key.split("-").map(Number);
     const weekday = new Date(y, m - 1, d, 12).getDay();

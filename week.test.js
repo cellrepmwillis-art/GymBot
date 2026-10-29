@@ -27,19 +27,21 @@ test("moving the rest day midweek carries on from the days already done", () => 
   // Standard: full body Monday, cardio Tuesday, so full body Wednesday.
   assert.deepEqual(keys(26, 4).map((key) => title(key, schedule, "none")), ["Full body", "Cardio day", "Full body", "Rest"]);
   assert.deepEqual(keys(26, 3).map((key) => title(key, schedule, "ppl")), ["Push A", "Pull A", "Legs A"]);
-  // This week is Monday through the new rest day; the next starts Friday.
-  assert.deepEqual(weekDays("2026-10-28", schedule), keys(26, 4));
-  assert.deepEqual(trainingWeek("2026-10-28", schedule).days, keys(26, 3));
+  // The week shown is always seven days ending on its rest day: this one
+  // ends on the new Thursday rest day, so it starts on Friday the 23rd.
+  assert.deepEqual(weekDays("2026-10-28", schedule), keys(23, 7));
+  assert.deepEqual(trainingWeek("2026-10-28", schedule).days, [...keys(23, 2), ...keys(26, 3)]);
   assert.deepEqual(weekDays("2026-10-30", schedule), [...keys(30, 2), "2026-11-01", "2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05"]);
 });
 
-test("moving the rest day later makes one longer week", () => {
+test("moving the rest day later still shows seven days", () => {
   // Sunday off, moved to Tuesday on Wednesday (after this week's Tuesday).
   const schedule = [{ from: "", day: 0 }, { from: "2026-10-28", day: 2 }];
   // Raw positions; the app plans that week's extra days with stretch.js.
   assert.deepEqual(positions(schedule, 26, 9), [1, 2, 3, 4, 5, 6, 1, 2, 0]);
-  // One week, Monday through the new Tuesday rest day: the rest day ends it.
-  assert.deepEqual(weekDays("2026-11-01", schedule), [...keys(26, 6), "2026-11-01", "2026-11-02", "2026-11-03"]);
+  // Still seven days shown, ending on the new Tuesday rest day: Monday the
+  // 26th, before it, drops off the front.
+  assert.deepEqual(weekDays("2026-11-01", schedule), [...keys(28, 4), "2026-11-01", "2026-11-02", "2026-11-03"]);
   assert.deepEqual(weekDays("2026-10-28", schedule), weekDays("2026-11-01", schedule));
 });
 
