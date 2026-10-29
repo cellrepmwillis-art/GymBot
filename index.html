@@ -305,6 +305,26 @@
     </form>
   </dialog>
 
+  <dialog id="rest-when" aria-labelledby="rest-when-title">
+    <form method="dialog">
+      <h2 id="rest-when-title"></h2>
+      <label class="field">
+        <span>Starting</span>
+        <select id="rest-when-choice">
+          <option value="this">This week</option>
+          <option value="next">Next week</option>
+        </select>
+      </label>
+      <input type="hidden" id="rest-when-dialog-day">
+      <p id="rest-when-text"></p>
+      <p id="rest-when-note" class="muted small"></p>
+      <div class="row">
+        <button value="no">Never mind</button>
+        <button value="yes" class="primary">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="settings">
     <form method="dialog" id="settings-form">
       <h2>Settings</h2>

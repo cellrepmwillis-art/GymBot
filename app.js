@@ -8,7 +8,7 @@ import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-29 · 6:00 PM";
+const VERSION = "2026-10-30 · 12:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -1296,10 +1296,12 @@ $("restore-file").addEventListener("change", async () => {
 });
 
 // Changing the rest day can't soft-reset the week. Picked ahead of time, it
-// starts after this week's rest day and this week stays as it is. Picked
-// on the day itself (today off), it asks first: an unexpected rest day, or
-// the new rest day from today on, which re-plans the rest of the week and
-// is allowed once a week.
+// asks whether it starts this week (the week ends on the new rest day and
+// the next one starts after it) or next week (this week stays as planned).
+// Picked on the day itself (today off), it asks first: an unexpected rest
+// day, or the new rest day from today on. A change to this week, either
+// way, is allowed once a week; the rest of the week always ends on the
+// rest day.
 const restHistory = () => state.restHistory ?? [{ from: "", day: Number(state.restDay) }];
 
 // The first day after this week's rest day, when a change made today starts.
@@ -1315,7 +1317,7 @@ function scheduleRestDay(day, from) {
   state.restDay = day;
 }
 
-// A rest day made today, on the day, in the past week.
+// A change that applied to the week it was made in, in the past week.
 const changedNowThisWeek = () => restHistory().some((entry) => entry.now && entry.from > addDays(dayKey(), -7));
 
 function setRestDay(day) {
@@ -1325,8 +1327,48 @@ function setRestDay(day) {
     askAtlas(day);
     return;
   }
-  scheduleRestDay(day, nextWeekStart());
+  askWhen(day);
 }
+
+// How the weeks run if `day` becomes the rest day from `from`.
+function weekPreview(day, from) {
+  const schedule = [...restHistory().filter((entry) => entry.from < from), { from, day }];
+  const week = weekDays(dayKey(), schedule);
+  const next = weekDays(addDays(week.at(-1), 1), schedule);
+  const show = (key) => dateOfKey(key).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
+  const end = isRestDate(schedule, week.at(-1)) ? `on its rest day, ${show(week.at(-1))}` : show(week.at(-1));
+  return `This week ends ${end}. The next runs ${show(next[0])} to ${show(next.at(-1))}${isRestDate(schedule, next.at(-1)) ? ", its rest day" : ""}.`;
+}
+
+function askWhen(day) {
+  const used = changedNowThisWeek();
+  $("rest-when-title").textContent = `Make ${DAY_NAMES[day]} your rest day`;
+  $("rest-when-choice").options[0].disabled = used;
+  $("rest-when-choice").value = used ? "next" : "this";
+  $("rest-when-dialog-day").value = String(day);
+  showWhen();
+  $("rest-when").showModal();
+}
+
+function showWhen() {
+  const day = Number($("rest-when-dialog-day").value);
+  const now = $("rest-when-choice").value === "this";
+  $("rest-when-text").textContent = weekPreview(day, now ? dayKey() : nextWeekStart());
+  $("rest-when-note").textContent = $("rest-when-choice").options[0].disabled
+    ? "This week's rest day already moved once, so the change can only start next week."
+    : now
+      ? "Days already done keep their workouts, and the week carries on from them. This week's rest day can only move once a week."
+      : "This week stays exactly as planned.";
+}
+$("rest-when-choice").addEventListener("change", showWhen);
+
+$("rest-when").addEventListener("close", () => {
+  if ($("rest-when").returnValue !== "yes") return;
+  const now = $("rest-when-choice").value === "this" && !changedNowThisWeek();
+  scheduleRestDay(Number($("rest-when-dialog-day").value), now ? dayKey() : nextWeekStart());
+  save();
+  render();
+});
 
 function askAtlas(day) {
   const name = DAY_NAMES[day];
@@ -1338,7 +1380,7 @@ function askAtlas(day) {
   $("atlas-choice").value = "unexpected";
   $("atlas-note").textContent = used
     ? "The rest day already moved on the day once this week, so today can only be an unexpected rest day."
-    : `Making it your rest day re-plans the rest of this week and every week after. That can only be done once a week. Picking ${name} before the day starts it next week instead.`;
+    : `Making it your rest day re-plans the rest of this week and every week after. That can only be done once a week. Picked ahead of time, a new rest day doesn't need this.`;
   $("atlas-dialog").dataset.day = String(day);
   $("atlas-dialog").showModal();
 }
@@ -1352,17 +1394,18 @@ $("atlas-dialog").addEventListener("close", () => {
   } else askUnexpectedRest();
 });
 
-// What Settings says about a rest day that starts next week.
+// What Settings says about the rest day: one still to start, or that
+// saving asks when a new one starts.
 function showRestNote() {
   const today = dayKey();
   const pending = restHistory().find((entry) => entry.from > today);
   const picked = Number($("rest-input").value);
-  const starts = picked === Number(state.restDay) ? pending?.from : picked === weekdayOf(today) && !isRestDate(rests(), today) ? null : nextWeekStart();
-  $("rest-note").hidden = !starts || picked === restDayOn(rests(), today);
-  if (!$("rest-note").hidden) {
-    const current = DAY_NAMES[restDayOn(rests(), today)];
-    $("rest-note").textContent = `${DAY_NAMES[picked]} starts after this week's rest day: this week keeps ${current}, and the new week begins ${dateOfKey(starts).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" })}.`;
-  }
+  const show = (key) => dateOfKey(key).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
+  const text = picked !== Number(state.restDay)
+    ? picked === weekdayOf(today) && !isRestDate(rests(), today) ? "That's today: saving asks how today goes." : "Saving asks whether it starts this week or next."
+    : pending ? `${DAY_NAMES[pending.day]} starts ${show(pending.from)}; until then the rest day is ${DAY_NAMES[restDayOn(rests(), today)]}.` : "";
+  $("rest-note").hidden = !text;
+  $("rest-note").textContent = text;
 }
 $("rest-input").addEventListener("change", showRestNote);
 
