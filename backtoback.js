@@ -37,3 +37,22 @@ export function backToBackRests(days, today) {
   }
   return rested;
 }
+
+// Days that put a body part in a 7-day stretch more often than a normal
+// week of the plan does (moving the rest day earlier, say, starts the next
+// week sooner). `keys` are consecutive days and `parts` what each trains
+// (null for nothing); `normal` is { part: times in a normal week }. Only
+// days from `today` on are returned, as a Map of day to part.
+export function extraDays(keys, parts, normal, today) {
+  const extra = new Map();
+  for (let start = 0; start + 7 <= keys.length; start++) {
+    const seen = {};
+    for (let i = start; i < start + 7; i++) {
+      const part = parts[i];
+      if (!part) continue;
+      seen[part] = (seen[part] ?? 0) + 1;
+      if (seen[part] > (normal[part] ?? 0) && keys[i] >= today) extra.set(keys[i], part);
+    }
+  }
+  return extra;
+}

@@ -380,3 +380,5 @@ main[hidden], .dock[hidden] { display: none; }
 .routine-part { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--muted); white-space: nowrap; }
 .routine-part select { width: auto; padding: 6px 8px; }
 .routine-part[hidden] { display: none; }
+.warn { padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 14%, transparent); font-size: 0.95rem; }
+.warn[hidden] { display: none; }

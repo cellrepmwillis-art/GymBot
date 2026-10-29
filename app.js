@@ -1,14 +1,14 @@
 import { dayKey, previousDay, nextReset } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned, sessionLimits, ROUTINE_CARDIO, ROUTINE_STRENGTH } from "./workouts.js";
 import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weeklyBadges, trainingWeek, weekDays, CARDIO_GOAL, STRENGTH_DAYS } from "./celebrate.js";
-import { restDayOn, isRestDate, planPosition, addDays, weekdayOf } from "./week.js";
-import { backToBackRests, bodyPart, partName } from "./backtoback.js";
+import { restDayOn, isRestDate, planPosition, addDays, weekdayOf, trainingWeek as planWeek } from "./week.js";
+import { backToBackRests, bodyPart, partName, extraDays } from "./backtoback.js";
 import { HEALING_AREAS, HEALING_KINDS, HEALING_DAYS, activeHealing, healingContext } from "./healing.js";
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-30 · 12:00 PM";
+const VERSION = "2026-10-30 · 3:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -227,6 +227,43 @@ function showScreen(name) {
 // running; null without lifting.
 const liftedPart = (w) => (!w.rest && w.items.some((item) => item.kind === "lift") ? bodyPart(w.split ?? w.target) : null);
 
+// The plan for day `key` under a rest-day `schedule`, which may be one
+// being considered; healing is as it is today.
+const planFor = (key, schedule) => suggest({
+  date: dateOfKey(key, 17), aim: state.aim, gym: state.gym, trainer: state.trainer, shotDay: state.shotDay,
+  restDay: restDayOn(schedule, key), position: planPosition(key, schedule), healing: activeHealing(state.healing, dayKey()), routine: activeRoutine(),
+});
+
+// Days from today on that would train a body part more often in 7 days
+// than the plan's normal week does, under `schedule` (the current one by
+// default): what moving the rest day can do. Earlier days count what was
+// actually done. Returns a Map of day to body part.
+function extraPartDays(schedule = rests()) {
+  const today = dayKey();
+  const normal = {};
+  for (const key of planWeek(addDays(today, 35), schedule).days) {
+    const part = liftedPart(planFor(key, schedule));
+    if (part) normal[part] = (normal[part] ?? 0) + 1;
+  }
+  const keys = Array.from({ length: 20 }, (_, i) => addDays(today, i - 6));
+  const parts = keys.map((key) => {
+    const lock = state.locked[key];
+    if (key < today) return lock && lock.mode !== "rest" ? liftedPart(workout(dateOfKey(key, 17), lock.focus, lock.shuffle, lock.swaps, lock.mode, false, lock.routine)) : null;
+    if (key === today && lock) return lock.mode === "rest" ? null : liftedPart(workout(dateOfKey(key, 17), lock.focus, lock.shuffle, lock.swaps, lock.mode, false, lock.routine));
+    if (isRestDate(schedule, key) || (key > today && state.autoRests?.[key])) return null;
+    return liftedPart(planFor(key, schedule));
+  });
+  return extraDays(keys, parts, normal, today);
+}
+
+// "Heads up" text for the extra days a rest-day change would make.
+function extraWarning(schedule) {
+  const extra = [...extraPartDays(schedule)];
+  if (!extra.length) return "";
+  const show = (key) => dateOfKey(key).toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
+  return ` Heads up: this adds ${extra.map(([key, part]) => `an extra ${partName(part)} day on ${show(key)}`).join(", ")}: more than your plan's normal week. It'll be flagged on the day, and you can pick a different body part under Focus.`;
+}
+
 // This week's days made rest days for back-to-back body parts, from what
 // was done on earlier days and what's planned from today on. Today and
 // later are worked out fresh each time; earlier days keep theirs.
@@ -358,13 +395,14 @@ function renderOptions() {
   const today = workout(now, target, 0, {}, null, false, activeRoutine());
   const todayLock = state.locked[dayKey(now)];
   const auto = !todayLock && !target ? autoRestReason() : null;
+  const extraPart = !target ? extraPartDays().get(dayKey(now)) : null;
   $("now-split").textContent = auto
     ? `Today: unexpected rest day · ${auto}`
     : todayLock?.unexpectedRest && todayLock.mode === "rest"
     ? `Today: unexpected rest day${target ? ` (${TARGET_LABELS[target]} if you work out anyway)` : ""}`
     : today.rest
     ? "Today: rest day · stretching only"
-    : `Today: ${displayName(today)}${today.healingChange === "swapped" || today.healingChange === "trimmed" ? ` · around your ${HEALING_AREAS[activeHealing(state.healing, dayKey()).area].toLowerCase()}` : ""}`;
+    : `Today: ${displayName(today)}${extraPart && extraPart === liftedPart(today) ? ` · extra ${partName(extraPart)} day` : ""}${today.healingChange === "swapped" || today.healingChange === "trimmed" ? ` · around your ${HEALING_AREAS[activeHealing(state.healing, dayKey()).area].toLowerCase()}` : ""}`;
 
   // Default and My routine last until changed; a body part is for today.
   const focusChoices = [[null, "Default"], ["routine", "User selected"], ...Object.entries(TARGET_LABELS)];
@@ -668,7 +706,11 @@ function renderWorkout() {
   $("plan-minutes").textContent = `~${w.minutes} min`;
   renderRoutinePart(lock, w);
 
-  const notes = w.notes;
+  // A body part come round sooner than the plan's normal week.
+  const extraPart = lock === day && !viewDay && !w.rest ? extraPartDays().get(currentDay()) : null;
+  const notes = extraPart && extraPart === liftedPart(w)
+    ? [`Extra ${partName(extraPart)} day: moving your rest day brought it round sooner than your plan's normal week. Go lighter today, or pick a different body part under Focus.`, ...w.notes].slice(0, 5)
+    : w.notes;
   // The trainer's own notes, then everyday protein, water and sleep.
   const known = weight();
   const health = mergeHealth(w.health ?? [], healthNotes({ weightLb: known.from === "default" ? null : known.lb, heightIn: height(), aim: w.aim }), 5);
@@ -1353,7 +1395,11 @@ function askWhen(day) {
 function showWhen() {
   const day = Number($("rest-when-dialog-day").value);
   const now = $("rest-when-choice").value === "this";
-  $("rest-when-text").textContent = weekPreview(day, now ? dayKey() : nextWeekStart());
+  const from = now ? dayKey() : nextWeekStart();
+  $("rest-when-text").textContent = weekPreview(day, from);
+  const warning = extraWarning([...restHistory().filter((entry) => entry.from < from), { from, day }]).trim();
+  $("rest-when-warn").hidden = !warning;
+  $("rest-when-warn").textContent = warning;
   $("rest-when-note").textContent = $("rest-when-choice").options[0].disabled
     ? "This week's rest day already moved once, so the change can only start next week."
     : now
@@ -1384,6 +1430,14 @@ function askAtlas(day) {
   $("atlas-dialog").dataset.day = String(day);
   $("atlas-dialog").showModal();
 }
+
+$("atlas-choice").addEventListener("change", () => {
+  const day = Number($("atlas-dialog").dataset.day);
+  const now = $("atlas-choice").value === "now";
+  $("atlas-note").textContent = now
+    ? `Making it your rest day re-plans the rest of this week and every week after. That can only be done once a week.${extraWarning([...restHistory().filter((entry) => entry.from < dayKey()), { from: dayKey(), day }])}`
+    : "Counts as an unexpected rest day; your rest day stays as it is.";
+});
 
 $("atlas-dialog").addEventListener("close", () => {
   if ($("atlas-dialog").returnValue !== "yes") return;

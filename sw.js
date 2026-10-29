@@ -1,6 +1,6 @@
 // Caches the app so it opens instantly and works offline. Only Ask the
 // trainer needs a connection.
-const CACHE = "gymbot-v47";
+const CACHE = "gymbot-v48";
 const SHELL = [
   "./",
   "index.html",
