@@ -2,12 +2,13 @@ import { dayKey, previousDay, nextReset } from "./day.js";
 import { AIMS, GYMS, DAY_NAMES, TARGETS, TARGET_LABELS, TRAINERS, suggest, gymDay, timeWindow, caloriesBurned, sessionLimits, ROUTINE_CARDIO, ROUTINE_STRENGTH } from "./workouts.js";
 import { celebrate, streak, level, unexpectedRests, unexpectedRestPrompt, weeklyBadges, trainingWeek, weekDays, CARDIO_GOAL, STRENGTH_DAYS } from "./celebrate.js";
 import { restDayOn, isRestDate, planPosition } from "./week.js";
+import { backToBackRests, bodyPart, partName } from "./backtoback.js";
 import { HEALING_AREAS, HEALING_KINDS, HEALING_DAYS, activeHealing, healingContext } from "./healing.js";
 import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-29 · 12:00 PM";
+const VERSION = "2026-10-29 · 3:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -40,6 +41,9 @@ function load() {
   // changing it midweek doesn't rewrite the days already done. restAck: the
   // day "Lock in anyway" was tapped on the rest day, so the reminder shows
   // once.
+  // autoRests: { day: body part }, days made unexpected rest days because
+  // the same body part was planned the day before or after (see
+  // backtoback.js). Kept so streaks skip them even if the app isn't opened.
   // healing: { area, kind, since }, a new tattoo or minor injury the plan
   // works around for 14 days from `since` (see healing.js), or null.
   // weightLb: for calories burned and the protein target, or null.
@@ -60,7 +64,7 @@ function load() {
   // behind the milestones (see celebrate.js). A lock's `complete` says every
   // item that day is locked, `celebrated` that the celebration was shown.
   const defaults = {
-    aim: "maintain", gym: "pf", trainer: "none", shotDay: "", restDay: 0, restHistory: null, restAck: null, healing: null, weightLb: null,
+    aim: "maintain", gym: "pf", trainer: "none", shotDay: "", restDay: 0, restHistory: null, restAck: null, healing: null, autoRests: {}, weightLb: null,
     locked: {}, focus: null, apiKey: "", chat: null, achievements: { completeDays: 0, fullWeeks: 0, weeks: [] },
     weighIns: [], weightStart: null, weightSetDay: null, heightIn: null, routine: null, useRoutine: false,
   };
@@ -217,6 +221,44 @@ function showScreen(name) {
   $("open-ask").hidden = name !== "workout" || Boolean(viewDay);
 }
 
+// ---- Back-to-back body parts ----
+
+// What a day's lifting trains, for spotting the same body part two days
+// running; null without lifting.
+const liftedPart = (w) => (!w.rest && w.items.some((item) => item.kind === "lift") ? bodyPart(w.split ?? w.target) : null);
+
+// This week's days made rest days for back-to-back body parts, from what
+// was done on earlier days and what's planned from today on. Today and
+// later are worked out fresh each time; earlier days keep theirs.
+function updateAutoRests() {
+  const today = dayKey();
+  const schedule = rests();
+  const keys = weekDays(today, schedule);
+  const days = keys.map((key) => {
+    if (isRestDate(schedule, key)) return { key, rest: true };
+    const lock = state.locked[key];
+    const date = dateOfKey(key, 17);
+    if (lock?.mode === "rest") return { key, rest: true, fixed: true };
+    if (lock) return { key, part: liftedPart(workout(date, lock.focus, lock.shuffle, lock.swaps, lock.mode, false, lock.routine)), fixed: true };
+    if (key < today) return { key, part: null, fixed: true };
+    const target = key === today ? todaysTarget() : null;
+    return { key, part: liftedPart(workout(date, target, 0, {}, null, false, target ? null : activeRoutine())), fixed: Boolean(target) };
+  });
+  const autoRests = Object.fromEntries(Object.entries(state.autoRests ?? {}).filter(([key]) => key < today));
+  for (const { key, part } of backToBackRests(days, today)) autoRests[key] = part;
+  // A day already made a rest day stays one.
+  for (const key of keys) if (key >= today && state.locked[key]?.autoRest && state.locked[key].mode === "rest") autoRests[key] ??= state.locked[key].autoRest;
+  if (JSON.stringify(autoRests) === JSON.stringify(state.autoRests)) return;
+  state.autoRests = autoRests;
+  save();
+}
+
+// Why today is an automatic rest day, or null.
+function autoRestReason(key = dayKey()) {
+  const part = state.autoRests?.[key];
+  return part ? `two ${partName(part)} days in a row` : null;
+}
+
 // ---- Options screen ----
 
 // The week strip: this plan week, from the day after the rest day through
@@ -237,7 +279,7 @@ function renderWeekStrip(container) {
     mark.className = "mark";
     if (lock?.unexpectedRest && lock.mode === "rest") mark.textContent = "💤";
     else if (lock?.total?.burned ?? lock?.burned) mark.textContent = lock.total?.burned ?? lock.burned;
-    else mark.textContent = lock?.done?.length ? "✓" : isRestDate(restDay, key) ? "–" : "";
+    else mark.textContent = lock?.done?.length ? "✓" : isRestDate(restDay, key) ? "–" : state.autoRests?.[key] && key >= today ? "💤" : "";
     li.append(mark);
     li.classList.toggle("today", key === today);
     li.classList.toggle("done", Boolean(lock?.done?.length));
@@ -315,7 +357,10 @@ function renderOptions() {
   const target = todaysTarget();
   const today = workout(now, target, 0, {}, null, false, activeRoutine());
   const todayLock = state.locked[dayKey(now)];
-  $("now-split").textContent = todayLock?.unexpectedRest && todayLock.mode === "rest"
+  const auto = !todayLock && !target ? autoRestReason() : null;
+  $("now-split").textContent = auto
+    ? `Today: unexpected rest day · ${auto}`
+    : todayLock?.unexpectedRest && todayLock.mode === "rest"
     ? `Today: unexpected rest day${target ? ` (${TARGET_LABELS[target]} if you work out anyway)` : ""}`
     : today.rest
     ? "Today: rest day · stretching only"
@@ -365,7 +410,7 @@ function renderOptions() {
   const { stats } = weeklyBadges({ locked: state.locked, today: todayKey, restDay: rests() });
   const tick = (ok) => (ok ? " ✓" : "");
   $("week-goals").textContent = `${stats.gymDays} ${state.gym === "outdoor" ? "workout" : "gym"} ${stats.gymDays === 1 ? "day" : "days"} · ${Math.min(stats.cardioMinutes, 999)} of ${CARDIO_GOAL} cardio min${tick(stats.cardioMinutes >= CARDIO_GOAL)} · strength ${Math.min(stats.strengthDays, STRENGTH_DAYS)} of ${STRENGTH_DAYS} days${tick(stats.strengthDays >= STRENGTH_DAYS)}`;
-  const run = streak(state.locked, todayKey, rests());
+  const run = streak(state.locked, todayKey, rests(), state.autoRests);
   const rank = level(state.achievements.fullWeeks);
   $("streak-line").textContent = [run >= 2 ? `🔥 ${run}-day streak` : null, rank ? `🏆 ${rank}` : null].filter(Boolean).join(" · ");
 
@@ -374,7 +419,7 @@ function renderOptions() {
   const lock = state.locked[todayKey];
   $("lock-in-label").textContent = lock?.unexpectedRest && lock.mode === "rest" ? "Back to my rest day" : lock?.done?.length ? "Lock back in" : "Lock in";
   // Unexpected rest days are for training days.
-  $("rest-link").hidden = Boolean(lock?.unexpectedRest) || isRestDate(rests(), dayKey(now));
+  $("rest-link").hidden = Boolean(lock?.unexpectedRest) || isRestDate(rests(), dayKey(now)) || Boolean(!lock && !todaysTarget() && autoRestReason());
 }
 
 // ---- My routine ----
@@ -529,16 +574,19 @@ $("lock-in").addEventListener("click", () => {
   // day" goes back to it, and a focus picked meanwhile waits for "Work out
   // anyway".
   const resting = previous?.unexpectedRest && previous.mode === "rest";
+  // Back-to-back body parts: today rests, unless a body part was picked.
+  const autoRest = !previous && !focus ? state.autoRests?.[today] ?? null : null;
   state.locked[today] = {
     at: Date.now(),
     focus,
     shuffle: same ? previous.shuffle ?? 0 : 0,
-    mode: resting ? "rest" : same ? previous.mode ?? null : null,
+    mode: resting || autoRest ? "rest" : same ? previous.mode ?? null : null,
     routine: routine ? { ...routine, ...(same && part ? { part } : {}) } : null,
     extra: previous?.extra ?? [],
     total: previous?.total,
     celebrated: same ? previous.celebrated ?? false : false,
-    unexpectedRest: previous?.unexpectedRest ?? false,
+    unexpectedRest: previous?.unexpectedRest ?? Boolean(autoRest),
+    ...(autoRest || previous?.autoRest ? { autoRest: autoRest ?? previous.autoRest } : {}),
     streakBreak: previous?.streakBreak ?? false,
     swaps: same ? previous.swaps ?? {} : {},
     done: same ? previous.done ?? [] : [],
@@ -615,7 +663,8 @@ function renderWorkout() {
   const { lock, day, w } = today;
 
   $("plan-title").textContent = w.rest ? w.title : displayName(w);
-  $("plan-focus").textContent = w.rest ? w.focus : [`${w.day} ${w.window.label.toLowerCase()}`, displayDetail(w)].filter(Boolean).join(" · ");
+  const autoFocus = w.rest && lock.autoRest && lock.mode === "rest" ? `Planned: ${autoRestReason(currentDay()) ?? `two ${partName(lock.autoRest)} days in a row`}, so this one rests.` : null;
+  $("plan-focus").textContent = autoFocus ?? (w.rest ? w.focus : [`${w.day} ${w.window.label.toLowerCase()}`, displayDetail(w)].filter(Boolean).join(" · "));
   $("plan-minutes").textContent = `~${w.minutes} min`;
   renderRoutinePart(lock, w);
 
@@ -770,7 +819,7 @@ function renderWorkout() {
     $(id).textContent = on ? `${label} on · tap for the full plan` : label;
   }
   $("rest-override").setAttribute("aria-pressed", "false");
-  $("rest-override").textContent = restOverride ? "Feeling better? Work out anyway" : lock.unexpectedRest ? "Back to my rest day" : "Unexpected rest day override";
+  $("rest-override").textContent = restOverride ? (lock.autoRest ? "Work out anyway" : "Feeling better? Work out anyway") : lock.unexpectedRest ? "Back to my rest day" : "Unexpected rest day override";
 }
 
 // ---- Sessions ----
@@ -983,7 +1032,7 @@ $("lock-out").addEventListener("click", lockOut);
 function celebrateToday(lock, weekly = []) {
   lock.celebrated = true;
   const { celebration, achievements } = celebrate({
-    locked: state.locked, today: currentDay(), restDay: rests(), achievements: state.achievements, rest: lock.rest,
+    locked: state.locked, today: currentDay(), restDay: rests(), achievements: state.achievements, rest: lock.rest, autoRests: state.autoRests ?? {},
   });
   state.achievements = achievements;
   save();
@@ -1293,6 +1342,7 @@ function render() {
   // A day being edited stops being editable once it's no longer an earlier
   // day of this week (after midnight on the rest day, say).
   if (viewDay && (viewDay >= dayKey() || !weekDays(dayKey(), rests()).includes(viewDay))) viewDay = null;
+  updateAutoRests();
   const screen = screenNow();
   showScreen(screen);
   if (screen === "workout") {

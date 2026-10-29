@@ -20,7 +20,9 @@ const isWorkout = (locked, key) => isComplete(locked, key) && !locked[key].rest;
 // while today isn't finished yet). Rest days, and unexpected rest days that
 // didn't cut the lock, are skipped, not counted, so they don't break it. An
 // unexpected rest day worked out anyway counts once the workout is finished.
-export function streak(locked, today, restDay) {
+// `autoRests` maps days made rest days for back-to-back body parts (see
+// backtoback.js); like rest days, they're skipped unless worked out anyway.
+export function streak(locked, today, restDay, autoRests = {}) {
   let count = 0;
   let key = isComplete(locked, today) || locked[today]?.unexpectedRest ? today : previousDay(today);
   for (let i = 0; i < 1000; i++, key = previousDay(key)) {
@@ -29,6 +31,7 @@ export function streak(locked, today, restDay) {
       count++;
       continue;
     }
+    if (autoRests[key]) continue;
     if (locked[key]?.unexpectedRest) {
       if (locked[key].streakBreak) break;
       continue;
@@ -38,9 +41,10 @@ export function streak(locked, today, restDay) {
   return count;
 }
 
-// Unexpected rest days already taken this training week, today left out.
+// Unexpected rest days already taken this training week, today left out;
+// the automatic ones for back-to-back body parts don't count.
 export function unexpectedRests(locked, today, restDay) {
-  return trainingWeek(today, restDay).days.filter((key) => key !== today && locked[key]?.unexpectedRest).length;
+  return trainingWeek(today, restDay).days.filter((key) => key !== today && locked[key]?.unexpectedRest && !locked[key].autoRest).length;
 }
 
 // What to say before an unexpected rest day. `taken` is how many were
@@ -91,7 +95,7 @@ const REST_LINES = [
 // { completeDays, fullWeeks, weeks: [week ids] }; returns the celebration
 // ({ title, line, badges }) and the updated achievements. Call it once per
 // day, after marking today complete in `locked`.
-export function celebrate({ locked, today, restDay, achievements, rest }) {
+export function celebrate({ locked, today, restDay, achievements, rest, autoRests = {} }) {
   const done = { completeDays: 0, fullWeeks: 0, weeks: [], ...achievements };
   const pick = (lines) => lines[weekdayOf(today) % lines.length];
   if (rest) return { celebration: { title: "Recovery locked in", line: pick(REST_LINES), badges: [] }, achievements: done };
@@ -99,18 +103,19 @@ export function celebrate({ locked, today, restDay, achievements, rest }) {
   done.completeDays++;
   const badges = [];
   const week = trainingWeek(today, restDay);
-  const weekDone = week.days.every((key) => isComplete(locked, key)) && !done.weeks.includes(week.id);
+  const training = week.days.filter((key) => !autoRests[key] || isComplete(locked, key));
+  const weekDone = training.every((key) => isComplete(locked, key)) && !done.weeks.includes(week.id);
   if (weekDone) {
     done.weeks = [...done.weeks, week.id];
     done.fullWeeks++;
     const rank = level(done.fullWeeks);
     const times = done.fullWeeks > 1 ? ` That's ${done.fullWeeks} full weeks.` : "";
-    const all = week.days.length === 6 ? "all six days'" : `all ${week.days.length} days'`;
+    const all = training.length === 6 ? "all six days'" : `all ${training.length} days'`;
     badges.push({ icon: "🏆", text: `You locked in this week: ${all} goals met. ${rank} level achieved.${times}` });
   }
   const seven = pastSeven(locked, today);
   if (seven >= 5 && !weekDone) badges.push({ icon: "💪", text: `You locked in ${seven} of the past 7 days. Arnold would be proud.` });
-  const run = streak(locked, today, restDay);
+  const run = streak(locked, today, restDay, autoRests);
   if (STREAK_MARKS.includes(run)) badges.push({ icon: "🔥", text: `${run}-day streak. Rest days don't break it.` });
   if (done.completeDays === 1) badges.push({ icon: "🔑", text: "Your first full lock-in. The first of many." });
   if (TOTAL_MARKS.includes(done.completeDays)) badges.push({ icon: "⭐", text: `${done.completeDays} workouts fully locked in.` });
