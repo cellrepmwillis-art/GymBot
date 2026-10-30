@@ -429,6 +429,14 @@ function cardioOnly({ base, coachKey, plan, window, gym, shotSoon, runDay, ctx, 
   };
 }
 
+// Exercises that beat the others in their slot for muscle growth in head-
+// to-head studies, so they're planned first whatever the trainer's
+// equipment order (a trainer's own `prefer` list comes before these):
+// seated over lying leg curls (Maeo et al., 2021), overhead triceps
+// extensions over pushdowns (Maeo et al., 2023), and straight-knee over
+// bent-knee calf raises for the visible calf muscle (Kinoshita et al., 2023).
+const EVIDENCE_FIRST = ["Seated leg curl", "Overhead cable triceps extension", "Overhead dumbbell triceps extension", "Standing calf raise (Smith machine)"];
+
 // At most this many tips a session.
 export const MAX_TIPS = 5;
 
@@ -703,16 +711,21 @@ function suggestDay({ date = new Date(), aim = "maintain", gym = "pf", shuffle =
   // leg press standing in for the squat, then the leg press slot).
   const used = new Set();
   const fresh = (planned, options) => (used.has(planned.name) ? options.find((option) => !used.has(option.name)) ?? planned : planned);
+  // The version with the best evidence for the trainer's goal goes first.
+  const evidence = [...(coach.prefer ?? []), ...EVIDENCE_FIRST];
+  const favored = (options) => options.filter((option) => evidence.includes(option.name)).sort((a, b) => evidence.indexOf(a.name) - evidence.indexOf(b.name))[0];
   const exercises = slots.map((options, i) => {
     let planned;
     let others;
+    const best = favored(options);
     if (coach.equipment) {
       const rank = (option) => coach.equipment.indexOf(equipmentKind(option.name));
       const preferred = [...options].sort((a, b) => rank(a) - rank(b));
+      if (best) preferred.splice(preferred.indexOf(best), 1), preferred.unshift(best);
       planned = fresh(pick(preferred, shuffle), preferred);
       others = preferred.filter((option) => option !== planned);
     } else {
-      planned = fresh(pick(options, shuffle), options);
+      planned = fresh(best ?? pick(options, shuffle), options);
       // Machine, then free weight, then other, one of each before any repeats.
       const sorted = options.filter((option) => option !== planned).sort((a, b) => equipmentRank(a.name) - equipmentRank(b.name));
       const firstOfKind = sorted.filter((option, k) => k === 0 || equipmentRank(option.name) !== equipmentRank(sorted[k - 1].name));

@@ -12,6 +12,9 @@
 //                  equipmentKind in workouts.js): each exercise starts with
 //                  the most preferred choice the gym has, and swaps follow
 //                  the same order
+//   prefer         exercises with the best evidence for this goal, planned
+//                  first when the day has them (before workouts.js's
+//                  EVIDENCE_FIRST, which applies to everyone)
 //   notes(ctx)     training tips shown with the workout
 //   health(ctx)    food, recovery and medical notes, shown on their own
 //   sessions       sessions a day, the day's plan included: { strength,
@@ -90,7 +93,9 @@ export const TRAINERS = {
     blurb: "Muscle size first: every muscle twice a week, moderate reps, sets taken close to failure.",
     // Cables and machines keep tension on the muscle through the whole rep.
     equipment: ["cable", "machine", "dumbbell", "smith", "barbell", "other"],
-    sources: ["ACSM progression models for resistance training", "Bodybuilding.com", "Schoenfeld's hypertrophy research"],
+    // Curls with the biceps stretched (arms behind the body) grow it more.
+    prefer: ["Incline dumbbell curl", "Cable curl (behind the body)"],
+    sources: ["ACSM progression models for resistance training", "Bodybuilding.com", "Schoenfeld's hypertrophy research", "Maeo and others on training muscles in a stretched position"],
     scheme: (plan) => ({
       main: { reps: plan === "cut" ? "6–8" : "6–10" },
       accessory: { sets: plan === "gain" ? 4 : 3, reps: plan === "cut" ? "10–15" : "8–12", rest: "60–90 sec" },
@@ -132,7 +137,10 @@ export const TRAINERS = {
     blurb: "Running comes first: easy runs, one speed day, one tempo day and a long run, with lifting twice a week to stay injury-free.",
     // Free weights and bodyweight train balance and each leg on its own.
     equipment: ["dumbbell", "other", "cable", "machine", "smith", "barbell"],
-    sources: ["ACSM", "Runner's World", "the 80/20 easy-to-hard running guideline"],
+    // The soleus (trained with the knee bent) takes the biggest load of any
+    // muscle when running, so the seated calf raise comes first.
+    prefer: ["Seated calf raise"],
+    sources: ["ACSM", "Runner's World", "the 80/20 easy-to-hard running guideline", "Dorn and others on the calf muscles in running"],
     scheme: () => ({
       main: { sets: 3, reps: "6–8", rest: "2 min" },
       accessory: { sets: 2, reps: "10–12", rest: "60 sec" },
