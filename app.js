@@ -9,7 +9,7 @@ import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-11-01 · 12:00 PM";
+const VERSION = "2026-11-01 · 1:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -250,6 +250,16 @@ function displayDetail(w) {
 
 // "See example": a YouTube search for the exercise done with good form. It
 // opens in the YouTube app on phones that have it.
+// Two-dumbbell moves that can be done one arm at a time or both together.
+// Studies find about the same growth either way (one side at a time lets
+// each arm lift a little more, the bilateral deficit, but takes twice as
+// long), so User selected says so.
+const TWO_DUMBBELLS = new Set([
+  "Dumbbell curl", "Hammer curl", "Incline dumbbell curl", "Dumbbell spider curl",
+  "Seated dumbbell shoulder press", "Standing dumbbell shoulder press", "Dumbbell Arnold press",
+  "Dumbbell lateral raise", "Dumbbell kickback",
+]);
+
 function exampleLink(name, label = "See example") {
   const link = document.createElement("a");
   link.className = "example";
@@ -919,6 +929,7 @@ function renderWorkout() {
           : item.favored === item.name
             ? "Research favors this version for growth."
             : `Research favors ${item.favored} for growth; this one still works.`;
+        if (TWO_DUMBBELLS.has(item.name)) advice.append(document.createElement("br"), "Alternating or both arms together: same growth either way. Alternate for focus on each arm, go together to save time.");
         adviceLine = advice;
       }
     } else {
