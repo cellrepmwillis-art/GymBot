@@ -5,7 +5,7 @@
 // Barbells and squat racks are only used for Anytime Fitness style gyms,
 // since most Planet Fitness clubs don't have them.
 import { RESET_HOUR } from "./day.js";
-import { works, insteadOf, fullBodySlotsAvoiding, healingNotes, healingHealth } from "./healing.js";
+import { works, insteadOf, fullBodySlotsAvoiding, healingNotes, healingHealth, legTattoo, easyCardio } from "./healing.js";
 import { TRAINERS, RUNNER_LEGS } from "./trainers.js";
 import { MET } from "./met.js";
 import { OUTDOOR } from "./outdoor.js";
@@ -513,10 +513,32 @@ export function suggest(args = {}) {
   return withHealing(suggestPlan(args), args.healing, args.gym);
 }
 
-// Healing tips first, within the limits.
+// Healing tips first, within the limits. A leg or foot tattoo eases the
+// plan's cardio and runs to an easy walk.
 function withHealing(w, healing, gym) {
   if (!healing) return w;
-  const notes = w.rest ? [] : healingNotes(healing, { change: w.healingChange ?? null, gym, lifting: w.items.some((item) => item.kind === "lift") });
+  let cardio = w.cardioChange ?? null;
+  if (!w.rest && !cardio && legTattoo(healing)) {
+    const easy = easyCardio(healing, gym);
+    let delta = 0;
+    const items = w.items.map((item) => {
+      if (item.kind !== "cardio" && item.kind !== "run") return item;
+      delta += easy.minutes - item.minutes;
+      return { ...item, kind: "cardio", name: "Cardio", text: easy.text, minutes: easy.minutes, met: easy.met };
+    });
+    if (items.some((item, i) => item !== w.items[i])) {
+      cardio = "eased";
+      w = { ...w, items, cardio: easy.text, run: null, minutes: Math.round((w.minutes + delta) / 5) * 5 };
+      // User selected's title names its cardio, and a run day's its run.
+      if (w.routine) w.title = TARGETS[w.part] ? `${TARGET_LABELS[w.part]} + easy walk` : "Easy walk";
+      else if (w.items.length && w.run !== undefined && /run|speed|cross-train/i.test(w.title)) {
+        const lifted = w.items.some((item) => item.kind === "lift");
+        w.title = lifted ? `Easy walk + ${(TARGET_LABELS[w.split] ?? "lifting").toLowerCase()}` : "Easy walk";
+        w.focus = lifted ? "Walk, then lifting that leaves your legs alone" : "An easy walk while your tattoo heals";
+      }
+    }
+  }
+  const notes = w.rest ? [] : healingNotes(healing, { change: w.healingChange ?? null, gym, lifting: w.items.some((item) => item.kind === "lift"), cardio });
   return {
     ...w,
     notes: [...notes, ...w.notes].slice(0, MAX_TIPS),
@@ -545,6 +567,25 @@ function suggestPlan(args) {
   // the routine's turn.
   const picked = routine.part === "none" || Boolean(TARGETS[routine.part]);
   const lifting = routine.part === "none" ? null : TARGETS[routine.part] ? routine.part : turn;
+  // A new tattoo on the legs or feet makes User selected strength only: no
+  // 12-3-30 or other cardio while it heals. A day without lifting lifts
+  // something that leaves it alone; "Just the cardio", picked by hand,
+  // gets the eased cardio instead.
+  if (legTattoo(healing) && routine.part !== "none") {
+    const lift = lifting ?? insteadOf(healing.area);
+    const w = suggestDay({ ...args, target: lift, mode: "strength", planTarget: !TARGETS[routine.part] });
+    return {
+      ...w,
+      routine: true,
+      part: lift,
+      turn: turn ?? lift,
+      mode: null,
+      healingChange: moved && !picked ? "swapped" : w.healingChange,
+      cardioChange: "strengthOnly",
+      title: `${TARGET_LABELS[lift]} (strength only)`,
+      focus: "User selected · strength only while your tattoo heals",
+    };
+  }
   const w = suggestDay({ ...args, target: lifting, mode: lifting ? null : "cardio", planTarget: !picked });
   if (moved && !picked) w.healingChange = "swapped";
   // The routine's cardio replaces the plan's.
