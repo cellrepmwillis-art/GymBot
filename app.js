@@ -9,7 +9,7 @@ import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-11-01 · 1:00 PM";
+const VERSION = "2026-11-01 · 2:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -937,6 +937,8 @@ function renderWorkout() {
       if (item.kind === "stretch") detail.append(" ", exampleLink(item.name));
     }
     if (detail.textContent) body.append(detail);
+    // EZ bars: which bends to hold.
+    if (item.grip) body.append(Object.assign(document.createElement("div"), { className: "grip", textContent: `Grip: ${item.grip}` }));
     if (adviceLine) body.append(adviceLine);
 
     li.append(toggle, body);

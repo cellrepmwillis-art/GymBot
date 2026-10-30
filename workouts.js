@@ -437,6 +437,17 @@ function cardioOnly({ base, coachKey, plan, window, gym, shotSoon, runDay, ctx, 
 // bent-knee calf raises for the visible calf muscle (Kinoshita et al., 2023).
 const EVIDENCE_FIRST = ["Seated leg curl", "Overhead cable triceps extension", "Overhead dumbbell triceps extension", "Standing calf raise (Smith machine)"];
 
+// Where to hold an EZ bar: its inner bends are the close grip, the outer
+// bends the wide one. Either way the bend should turn the palms in a little
+// (pinkies lower than thumbs); if the wrists feel twisted, the bar is upside
+// down for that grip.
+const EZ_ANGLE = "If your wrists feel twisted, flip the bar over.";
+export const GRIPS = {
+  "EZ-bar curl": `Palms up on the outer (wide) bends, about shoulder width. The inner (close) bends shift a little more work to the outer biceps. ${EZ_ANGLE}`,
+  "EZ-bar skull crusher": `Palms up on the inner (close) bends, hands about 6–8 inches apart. ${EZ_ANGLE}`,
+  "EZ-bar reverse curl": `Palms down on the outer (wide) bends, about shoulder width. ${EZ_ANGLE}`,
+};
+
 // At most this many tips a session.
 export const MAX_TIPS = 5;
 
@@ -747,7 +758,7 @@ function suggestDay({ date = new Date(), aim = "maintain", gym = "pf", shuffle =
     // and the choice is a free weight.
     const kinds = Object.fromEntries(["dumbbell", "barbell"].map((kind) => [kind, options.find((option) => equipmentKind(option.name) === kind)?.name]));
     const freeWeights = kinds.barbell && kinds.dumbbell && ["barbell", "dumbbell"].includes(equipmentKind(choice.name)) ? kinds : null;
-    return { name: choice.name, sets, reps, rest, alternative, main, favored: best?.name ?? null, freeWeights };
+    return { name: choice.name, sets, reps, rest, alternative, main, favored: best?.name ?? null, freeWeights, grip: GRIPS[choice.name] ?? null };
   });
 
   // Supersets pair accessories two at a time (not the main lift): do one set

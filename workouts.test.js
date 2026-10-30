@@ -476,3 +476,14 @@ test("no exercise is planned twice in a day", () => {
     }
   }
 });
+
+test("EZ-bar exercises say which bends to hold", () => {
+  const swapsTo = (w, name) => w.exercises.find((e) => e.name === name);
+  // Biceps day at Planet Fitness on PPL plans the EZ-bar curl first.
+  const biceps = suggest({ date: new Date(2026, 10, 2, 17), trainer: "ppl", target: "biceps", gym: "pf" });
+  assert.match(swapsTo(biceps, "EZ-bar curl").grip, /^Palms up on the outer \(wide\) bends/);
+  const triceps = suggest({ date: new Date(2026, 10, 2, 17), trainer: "ppl", target: "triceps", gym: "pf" });
+  assert.match(swapsTo(triceps, "EZ-bar skull crusher").grip, /^Palms up on the inner \(close\) bends/);
+  // Other exercises have none.
+  assert.ok(biceps.exercises.filter((e) => !/EZ-bar/.test(e.name)).every((e) => e.grip === null));
+});

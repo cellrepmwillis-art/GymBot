@@ -389,3 +389,4 @@ main[hidden], .dock[hidden] { display: none; }
 .advice { font-size: 0.8rem; margin-top: 4px; color: var(--muted); }
 .advice.agreed::before { content: "✓ "; color: var(--accent); }
 .advice.differs::before { content: "⚖ "; }
+.grip { font-size: 0.85rem; margin-top: 4px; }
