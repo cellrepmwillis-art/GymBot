@@ -76,7 +76,7 @@ const SPLITS = {
       [E("Seated cable row"), E("Seated row machine"), E("Smith machine bent-over row")],
       [E("Chest-supported dumbbell row"), E("Single-arm dumbbell row"), E("Plate-loaded row machine")],
       [E("Cable face pull"), E("Rear delt fly machine"), E("Bent-over dumbbell reverse fly")],
-      [E("Dumbbell curl"), E("Cable curl"), E("Biceps curl machine")],
+      [E("Dumbbell curl"), E("EZ-bar curl"), E("Biceps curl machine")],
       [E("Hammer curl"), E("Cable rope hammer curl"), E("Biceps curl machine (neutral grip)")],
     ],
   },
@@ -101,7 +101,7 @@ const SPLITS = {
       [E("Incline dumbbell press"), E("Incline chest press machine"), E("Smith machine incline press")],
       [E("Cable lateral raise"), E("Dumbbell lateral raise"), E("Lateral raise machine")],
       [E("Pec deck"), E("Cable fly"), E("Dumbbell fly")],
-      [E("Overhead cable triceps extension"), E("Dumbbell skull crusher"), E("Triceps extension machine")],
+      [E("Overhead cable triceps extension"), E("EZ-bar skull crusher"), E("Triceps extension machine")],
     ],
   },
   pullB: {
@@ -175,12 +175,12 @@ export const TARGETS = {
     focus: "Curls from every angle, plus forearms",
     small: true,
     slots: [
-      [B("Barbell curl"), E("Dumbbell curl"), E("Cable curl"), E("Fixed-weight EZ-bar curl")],
+      [B("Barbell curl"), E("EZ-bar curl"), E("Dumbbell curl"), E("Cable curl")],
       [E("Preacher curl machine"), E("Dumbbell preacher curl"), E("Cable preacher curl")],
       [E("Incline dumbbell curl"), E("Cable curl (behind the body)"), E("Dumbbell spider curl")],
       [E("Hammer curl"), E("Cable rope hammer curl"), E("Biceps curl machine (neutral grip)")],
       [E("Biceps curl machine"), E("Concentration curl"), E("Single-arm cable curl")],
-      [E("Dumbbell wrist curl"), E("Farmer's carry", "40–60 sec"), E("Cable wrist curl")],
+      [E("Dumbbell wrist curl"), E("Farmer's carry", "40–60 sec"), E("EZ-bar reverse curl")],
     ],
   },
   triceps: {
@@ -192,7 +192,7 @@ export const TARGETS = {
       [E("Assisted dip machine"), E("Triceps dip machine"), E("Bench dip", "as many as you can")],
       [E("Cable rope pushdown"), E("Straight-bar cable pushdown"), E("Reverse-grip cable pushdown")],
       [E("Overhead cable triceps extension"), E("Overhead dumbbell triceps extension"), E("Single-arm overhead dumbbell extension")],
-      [E("Dumbbell skull crusher"), E("Triceps extension machine"), E("Cable skull crusher")],
+      [E("EZ-bar skull crusher"), E("Triceps extension machine"), E("Dumbbell skull crusher")],
       [E("Single-arm cable kickback"), E("Dumbbell kickback"), E("Triceps press machine")],
     ],
   },
@@ -470,7 +470,8 @@ const splitByKey = (key) => (key === "runnerLegs" ? RUNNER_LEGS : SPLITS[key] ??
 // The kind of equipment an exercise uses, for trainers' preferences.
 export function equipmentKind(name) {
   if (/smith/i.test(name)) return "smith";
-  if (/barbell/i.test(name)) return "barbell";
+  // Planet Fitness's fixed-weight EZ bars count as barbells.
+  if (/barbell|ez-bar/i.test(name)) return "barbell";
   // Resistance bands pull like cables.
   if (/cable|pushdown|face pull|\bband\b/i.test(name)) return "cable";
   if (/machine|leg press|pec deck|pulldown|hack squat|leg curl|leg extension|calf press|seated calf raise/i.test(name)) return "machine";
