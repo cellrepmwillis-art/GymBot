@@ -742,7 +742,12 @@ function suggestDay({ date = new Date(), aim = "maintain", gym = "pf", shuffle =
     // Bodyweight work needs more reps than gym weights to be a workout.
     reps = choice.reps ?? split.reps ?? (gym === "outdoor" ? (main ? "10–15" : "12–20") : reps);
     rest = split.rest ?? rest;
-    return { name: choice.name, sets, reps, rest, alternative, main };
+    // For User selected: the version research favors in this slot, if any,
+    // and a barbell and a dumbbell version to compare when the gym has both
+    // and the choice is a free weight.
+    const kinds = Object.fromEntries(["dumbbell", "barbell"].map((kind) => [kind, options.find((option) => equipmentKind(option.name) === kind)?.name]));
+    const freeWeights = kinds.barbell && kinds.dumbbell && ["barbell", "dumbbell"].includes(equipmentKind(choice.name)) ? kinds : null;
+    return { name: choice.name, sets, reps, rest, alternative, main, favored: best?.name ?? null, freeWeights };
   });
 
   // Supersets pair accessories two at a time (not the main lift): do one set

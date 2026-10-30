@@ -9,7 +9,7 @@ import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-31 · 9:00 PM";
+const VERSION = "2026-11-01 · 12:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -250,13 +250,13 @@ function displayDetail(w) {
 
 // "See example": a YouTube search for the exercise done with good form. It
 // opens in the YouTube app on phones that have it.
-function exampleLink(name) {
+function exampleLink(name, label = "See example") {
   const link = document.createElement("a");
   link.className = "example";
   link.href = `https://www.youtube.com/results?search_query=${encodeURIComponent(`how to do ${name} proper form`)}`;
   link.target = "_blank";
   link.rel = "noopener";
-  link.textContent = "▶ See example";
+  link.textContent = `▶ ${label}`;
   // Following the link shouldn't also lock the exercise.
   link.addEventListener("click", (event) => event.stopPropagation());
   return link;
@@ -879,6 +879,7 @@ function renderWorkout() {
 
     const detail = document.createElement("div");
     detail.className = "detail";
+    let adviceLine = null;
     if (item.kind === "lift") {
       lifts++;
       // Supersets number each pair: 2A, 2B, 3A, 3B...
@@ -904,12 +905,28 @@ function renderWorkout() {
         // Nothing's ever taken at the park.
         detail.append(state.gym === "outdoor" ? " · Swap: " : " · Taken? ", swap);
       }
-      detail.append(" ", exampleLink(item.name));
+      // User selected says where the advice agrees and where it doesn't, and
+      // shows the barbell and dumbbell versions side by side.
+      if (w.routine && item.freeWeights) {
+        const bar = /ez-bar/i.test(item.freeWeights.barbell) ? "EZ bar" : "Barbell";
+        detail.append(" · See example: ", exampleLink(item.freeWeights.barbell, bar), " ", exampleLink(item.freeWeights.dumbbell, "Dumbbell"));
+      } else detail.append(" ", exampleLink(item.name));
+      if (w.routine) {
+        const advice = document.createElement("div");
+        advice.className = `advice ${item.favored ? "agreed" : "differs"}`;
+        advice.textContent = !item.favored
+          ? "Advice differs: no version is clearly better, so use what's free."
+          : item.favored === item.name
+            ? "Research favors this version for growth."
+            : `Research favors ${item.favored} for growth; this one still works.`;
+        adviceLine = advice;
+      }
     } else {
       detail.textContent = item.text ?? "";
       if (item.kind === "stretch") detail.append(" ", exampleLink(item.name));
     }
     if (detail.textContent) body.append(detail);
+    if (adviceLine) body.append(adviceLine);
 
     li.append(toggle, body);
     li.addEventListener("click", () => {
