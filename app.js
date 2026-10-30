@@ -9,7 +9,7 @@ import { analyzeWeight, daysBetween, WEEK_DAYS } from "./weight.js";
 import { healthNotes, mergeHealth } from "./health.js";
 
 // Shown at the bottom of Settings, to check which version a phone is running.
-const VERSION = "2026-10-31 · 12:00 PM";
+const VERSION = "2026-10-31 · 3:00 PM";
 const STORAGE_KEY = "gymbot";
 // Locked-in days are kept about a year, for streaks.
 const KEEP_DAYS = 400;
@@ -358,6 +358,8 @@ function renderWeekStrip(container) {
   const restDay = rests();
   let workouts = 0;
   let burned = 0;
+  // While something's healing, the next workout day can be previewed.
+  const previewDay = activeHealing(state.healing, today) ? nextWorkoutDay(today) : null;
   // Days before GymBot was first used aren't missed.
   const firstDay = Object.keys(state.locked).sort()[0] ?? today;
   container.replaceChildren(...weekDays(today, restDay).map((key) => {
@@ -382,6 +384,14 @@ function renderWeekStrip(container) {
       li.setAttribute("aria-label", `Edit ${DAY_NAMES[weekday]}`);
       li.addEventListener("click", () => openDay(key));
       li.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") openDay(key); });
+    } else if (key === previewDay) {
+      // While something's healing, the next workout can be looked at ahead.
+      li.classList.add("preview");
+      li.tabIndex = 0;
+      li.setAttribute("role", "button");
+      li.setAttribute("aria-label", `Preview ${DAY_NAMES[weekday]}`);
+      li.addEventListener("click", () => previewWorkout(key));
+      li.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") previewWorkout(key); });
     } else if (key > today) {
       // Upcoming days stay closed: GymBot is for today, in the gym.
       li.classList.add("upcoming");
@@ -392,6 +402,32 @@ function renderWeekStrip(container) {
     return li;
   }));
   return { workouts, burned };
+}
+
+// The next day after `today` with a workout planned: not a rest day or a
+// rest day for back-to-back body parts.
+function nextWorkoutDay(today) {
+  for (let i = 1, key = addDays(today, 1); i < 8; i++, key = addDays(key, 1)) {
+    if (!isRestDate(rests(), key) && !state.autoRests?.[key]) return key;
+  }
+  return null;
+}
+
+// A look at an upcoming workout, read-only, to plan around something
+// healing. It opens for locking on the day.
+function previewWorkout(key) {
+  const w = workout(dateOfKey(key, new Date().getHours()), null, 0, {}, null, false, activeRoutine());
+  const name = DAY_NAMES[weekdayOf(key)];
+  $("preview-title").textContent = `${name}: ${displayName(w)}`;
+  $("preview-focus").textContent = displayDetail(w);
+  $("preview-items").replaceChildren(...w.items.map((item) => {
+    const li = document.createElement("li");
+    const label = item.kind === "lift" ? `${item.name} · ${item.sets} × ${item.reps}` : `${item.name}: ${item.text}`;
+    li.textContent = label;
+    return li;
+  }));
+  $("preview-notes").replaceChildren(...w.notes.slice(0, 2).map((text) => Object.assign(document.createElement("li"), { textContent: text })));
+  $("preview-dialog").showModal();
 }
 
 const UPCOMING_LINES = [

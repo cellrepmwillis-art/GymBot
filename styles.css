@@ -107,6 +107,9 @@ button.primary { background: var(--accent); color: var(--accent-text); border-co
   color: var(--muted);
   border: 2px solid transparent;
 }
+.week li.preview { cursor: pointer; border: 2px dashed var(--accent); }
+.preview-items { padding-left: 18px; margin: 8px 0; display: grid; gap: 4px; }
+.preview-notes { padding-left: 18px; margin: 8px 0; color: var(--muted); }
 .week li.missed .mark { color: var(--accent); }
 .week li.today { border-color: var(--accent); color: var(--text); font-weight: 600; }
 .week li.done { background: var(--accent); color: var(--accent-text); }
